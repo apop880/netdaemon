@@ -1,0 +1,25 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.5.2.0
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "netdaemon", "netdaemon.csproj", "{8C3F4195-F278-FA8E-6D39-7EFD9BEABBA0}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{8C3F4195-F278-FA8E-6D39-7EFD9BEABBA0}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{8C3F4195-F278-FA8E-6D39-7EFD9BEABBA0}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{8C3F4195-F278-FA8E-6D39-7EFD9BEABBA0}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{8C3F4195-F278-FA8E-6D39-7EFD9BEABBA0}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {CB721E95-5B7B-4583-9149-9A9F0AF92684}
+	EndGlobalSection
+EndGlobal
