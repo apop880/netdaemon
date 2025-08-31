@@ -1,14 +1,4 @@
-using System.Collections.Generic;
-using System.Net.Http;
-
 namespace HomeAssistantApps;
-
-public class ProxmoxConfig
-{
-    public string? Token { get; set; }
-    public string? BaseUrl { get; set; }
-    public string? Node { get; set; }
-}
 
 [NetDaemonApp]
 public class Ups
@@ -17,46 +7,11 @@ public class Ups
     private const double CriticalBatteryShutdownThreshold = 60.0;
     private const double FullyChargedThreshold = 100.0;
 
-    public Ups(ILogger<Ups> logger, Entities entities, Telegram telegram, IConfiguration configuration, IHttpClientFactory httpClientFactory)
+    public Ups(ILogger<Ups> logger, Entities entities, Telegram telegram, Server server)
     {
         var shutdownSwitch = entities.InputBoolean.ShutdownOnUps;
         var upsCharge = entities.Sensor.ServerUpsBatteryCharge;
         var upsStatus = entities.Sensor.ServerUpsStatus;
-        var _isProxmoxConfigValid = true;
-        var proxmoxConfig = configuration.GetSection("Proxmox").Get<ProxmoxConfig>();
-
-        if (proxmoxConfig is null)
-        {
-            logger.LogError("Proxmox configuration not found.");
-            telegram.System("Error: Proxmox configuration not found. UPS functionality disabled.");
-            _isProxmoxConfigValid = false;
-        }
-        else
-        {
-            if (string.IsNullOrEmpty(proxmoxConfig.Token))
-            {
-                logger.LogError("Proxmox access token not found in configuration.");
-                telegram.System("Error: Proxmox access token not found. UPS functionality disabled.");
-                _isProxmoxConfigValid = false;
-            }
-            if (string.IsNullOrEmpty(proxmoxConfig.BaseUrl))
-            {
-                logger.LogError("Proxmox base URL not found in configuration.");
-                telegram.System("Error: Proxmox base URL not found. UPS functionality disabled.");
-                _isProxmoxConfigValid = false;
-            }
-            if (string.IsNullOrEmpty(proxmoxConfig.Node))
-            {
-                logger.LogError("Proxmox node not found in configuration.");
-                telegram.System("Error: Proxmox node not found. UPS functionality disabled.");
-                _isProxmoxConfigValid = false;
-            }
-        }
-
-        if (!_isProxmoxConfigValid)
-        {
-            return; // Terminate the constructor if configuration is invalid
-        }
 
         upsStatus.StateChanges()
             .Where(s => s.New?.State != s.Old?.State && s.New?.State == "On Battery")
@@ -86,25 +41,7 @@ public class Ups
                     if (shutdownSwitch.IsOn())
                     {
                         telegram.All($"UPS battery has dropped below {CriticalBatteryShutdownThreshold}%. Initiating shutdown process.");
-                        try
-                        {
-                            logger.LogInformation("Attempting to send shutdown request.");
-                            var httpClient = httpClientFactory.CreateClient("IgnoreSslClient");
-                            httpClient.DefaultRequestHeaders.TryAddWithoutValidation("Authorization", $"PVEAPIToken={proxmoxConfig!.Token}");
-                            httpClient.DefaultRequestHeaders.Add("Accept", "application/json");
-                            var content = new FormUrlEncodedContent(
-                            [
-                                new KeyValuePair<string, string>("command", "shutdown")
-                            ]);
-                            var response = await httpClient.PostAsync($"{proxmoxConfig.BaseUrl}/api2/json/nodes/{proxmoxConfig.Node}/status", content);
-                            response.EnsureSuccessStatusCode();
-                            logger.LogInformation("Shutdown request sent successfully.");
-                        }
-                        catch (Exception ex)
-                        {
-                            logger.LogError(ex, "Failed to send shutdown request.");
-                            telegram.Alex("Error: Failed to send shutdown request to the server.");
-                        }
+                        await server.Shutdown();
                     }
                     else
                     {

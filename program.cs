@@ -26,7 +26,8 @@ try
                 .AddHomeAssistantGenerated()
                 .AddHttpClient()
                 .AddSingleton<Telegram>()
-                .AddTransient<Unifi>();
+                .AddTransient<Unifi>()
+                .AddTransient<Proxmox>();
             services.AddHttpClient("IgnoreSslClient")
                 .ConfigurePrimaryHttpMessageHandler(() => new HttpClientHandler
                 {
