@@ -17,8 +17,9 @@ try
         .UseNetDaemonDefaultLogging()
         .UseNetDaemonRuntime()
         .UseNetDaemonTextToSpeech()
-        .ConfigureServices((_, services) =>
+        .ConfigureServices((hostContext, services) =>
         {
+            services.Configure<TelegramSettings>(hostContext.Configuration.GetSection("Telegram"));
             services
                 .AddAppsFromAssembly(Assembly.GetExecutingAssembly())
                 .AddNetDaemonStateManager()
