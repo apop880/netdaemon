@@ -1,8 +1,7 @@
 using System.Threading.Tasks;
 
-namespace HomeAssistantApps;
+namespace HomeAssistantApps.modules;
 
-[NetDaemonApp]
 public class Server
 {
     private readonly Unifi _unifi;
