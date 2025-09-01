@@ -2,18 +2,11 @@ using System.Threading.Tasks;
 
 namespace HomeAssistantApps.modules;
 
-public class Server
+public class Server(Unifi unifi, Proxmox proxmox, ILogger<Server> logger)
 {
-    private readonly Unifi _unifi;
-    private readonly Proxmox _proxmox;
-    private readonly ILogger<Server> _logger;
-
-    public Server(Unifi unifi, Proxmox proxmox, ILogger<Server> logger)
-    {
-        _unifi = unifi;
-        _proxmox = proxmox;
-        _logger = logger;
-    }
+    private readonly Unifi _unifi = unifi;
+    private readonly Proxmox _proxmox = proxmox;
+    private readonly ILogger<Server> _logger = logger;
 
     public async Task Shutdown()
     {

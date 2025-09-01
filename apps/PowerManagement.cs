@@ -1,17 +1,26 @@
 namespace HomeAssistantApps;
 
 [NetDaemonApp]
-public class Ups
+public class PowerManagement
 {
     private const double LowBatteryWarningThreshold = 80.0;
     private const double CriticalBatteryShutdownThreshold = 60.0;
     private const double FullyChargedThreshold = 100.0;
 
-    public Ups(ILogger<Ups> logger, Entities entities, Telegram telegram, Server server)
+    public PowerManagement(ILogger<PowerManagement> logger, Entities entities, Telegram telegram, Server server)
     {
         var shutdownSwitch = entities.InputBoolean.ShutdownOnUps;
         var upsCharge = entities.Sensor.ServerUpsBatteryCharge;
         var upsStatus = entities.Sensor.ServerUpsStatus;
+        var shutdownButton = entities.InputButton.ShutdownServer;
+
+        shutdownButton.StateChanges()
+            .SubscribeAsync(async _ =>
+            {
+                logger.LogInformation("Shutdown button pressed. Initiating shutdown process.");
+                telegram.All("The home server is shutting down now for maintenance.");
+                await server.Shutdown();
+            });
 
         upsStatus.StateChanges()
             .Where(s => s.New?.State != s.Old?.State && s.New?.State == "On Battery")
