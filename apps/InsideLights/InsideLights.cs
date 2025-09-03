@@ -80,8 +80,8 @@ public class InsideLights
                     }
                 });
             },
-            Scheduler.Default);
+            scheduler);
 
-        nighttimePeriod.SubscribeStart(() => ColorTemp = nighttimeColorTemp, Scheduler.Default);
+        nighttimePeriod.SubscribeStart(() => ColorTemp = nighttimeColorTemp, scheduler);
     }
 }

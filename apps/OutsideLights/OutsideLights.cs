@@ -66,7 +66,7 @@ public class OutsideLightsApp
             (AstroInstants.LocalSunsets - TimeSpan.FromMinutes(15))
             .To(TimeZoneInstants.DailyAt(hour: 23, minute: 30));
 
-        lightOnPeriod.SubscribeStartEnd(() => TurnLightsOn(), () => TurnLightsOff(), Scheduler.Default);
+        lightOnPeriod.SubscribeStartEnd(() => TurnLightsOn(), () => TurnLightsOff(), scheduler);
     }
 
     private void TurnLightsOn()
