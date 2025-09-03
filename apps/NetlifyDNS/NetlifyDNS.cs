@@ -2,6 +2,9 @@ using System.Net.Http;
 using System.Text.Json;
 using System.Collections.Generic;
 using System.Linq;
+using Polly;
+using Polly.Retry;
+using System.Threading.Tasks;
 
 
 namespace HomeAssistantApps;
@@ -11,11 +14,30 @@ public class NetlifyDNS
 {
     private readonly string _accessToken;
     private readonly ILogger<NetlifyDNS> _logger;
+    private readonly AsyncRetryPolicy<HttpResponseMessage> _httpRetryPolicy;
+    private readonly AsyncRetryPolicy _serviceCallRetryPolicy;
 
     public NetlifyDNS(IAppConfig<NetlifyDNSConfig> config, ILogger<NetlifyDNS> logger, SensorEntities entities, IConfiguration configuration, IHttpClientFactory httpClientFactory, Telegram telegram)
     {
         _logger = logger;
         _logger.LogInformation("NetlifyDNS App starting with configuration: {Config}", JsonSerializer.Serialize(config.Value));
+
+        _httpRetryPolicy = Policy
+            .Handle<HttpRequestException>()
+            .OrResult<HttpResponseMessage>(r => !r.IsSuccessStatusCode)
+            .WaitAndRetryAsync(3, retryAttempt => TimeSpan.FromSeconds(Math.Pow(2, retryAttempt)),
+                (outcome, timespan, retryAttempt, context) =>
+                {
+                    _logger.LogWarning("Request failed with {StatusCode}. Waiting {TimeSpan} before next retry. Retry attempt {RetryAttempt}", outcome.Result?.StatusCode, timespan, retryAttempt);
+                });
+
+        _serviceCallRetryPolicy = Policy
+            .Handle<Exception>()
+            .WaitAndRetryAsync(3, retryAttempt => TimeSpan.FromSeconds(2),
+                (exception, timespan, retryAttempt, context) =>
+                {
+                    _logger.LogWarning("Service call failed. Waiting {TimeSpan} before next retry. Retry attempt {RetryAttempt}", timespan, retryAttempt);
+                });
 
         var _httpClient = httpClientFactory.CreateClient();
         _accessToken = configuration.GetSection("Netlify:Token").Value
@@ -36,7 +58,7 @@ public class NetlifyDNS
                     _logger.LogInformation("Fetching existing DNS records from Netlify API");
                     try
                     {
-                        HttpResponseMessage response = await _httpClient.GetAsync(getPostUrl);
+                        HttpResponseMessage response = await _httpRetryPolicy.ExecuteAsync(() => _httpClient.GetAsync(getPostUrl));
                         string responseBody = await response.Content.ReadAsStringAsync();
                         _logger.LogInformation("Netlify API GET request returned status {StatusCode}", response.StatusCode);
                         _logger.LogDebug("Netlify GET response body: {Body}", responseBody);
@@ -61,7 +83,7 @@ public class NetlifyDNS
                                 string delUrl = $"https://api.netlify.com/api/v1/dns_zones/{apiZoneName}/dns_records/{recordId}?access_token={_accessToken}";
                                 try
                                 {
-                                    var deleteResponse = await _httpClient.DeleteAsync(delUrl);
+                                    var deleteResponse = await _httpRetryPolicy.ExecuteAsync(() => _httpClient.DeleteAsync(delUrl));
                                     _logger.LogInformation("DELETE request for record {RecordId} returned status {StatusCode}", recordId, deleteResponse.StatusCode);
                                     if (!deleteResponse.IsSuccessStatusCode)
                                     {
@@ -90,7 +112,7 @@ public class NetlifyDNS
                             var content = new StringContent(jsonPayload, System.Text.Encoding.UTF8, "application/json");
                             try
                             {
-                                var postResponse = await _httpClient.PostAsync(getPostUrl, content);
+                                var postResponse = await _httpRetryPolicy.ExecuteAsync(() => _httpClient.PostAsync(getPostUrl, content));
                                 var postResponseBody = await postResponse.Content.ReadAsStringAsync();
                                 _logger.LogInformation("POST request for domain {Domain} returned status {StatusCode}", domain, postResponse.StatusCode);
                                 _logger.LogDebug("Netlify POST response body: {Body}", postResponseBody);
@@ -119,7 +141,18 @@ public class NetlifyDNS
                     _logger.LogDebug("Skipping DNS update because new IP state is {State}.", s.New?.State);
                     if (s.New?.State == "unknown")
                     {
-                        entities.Myip.CallService("homeassistant.reload_config_entry");
+                        _ = Task.Run(async () =>
+                        {
+                            await _serviceCallRetryPolicy.ExecuteAsync(async () =>
+                            {
+                                entities.Myip.CallService("homeassistant.reload_config_entry");
+                                await Task.Delay(100); // Allow some time for the state to update
+                                if (entities.Myip.State == "unknown")
+                                {
+                                    throw new Exception("IP state is still unknown after reload attempt.");
+                                }
+                            });
+                        });
                     }
                 }
                 if (config.Value.DnsZones is null) _logger.LogWarning("Skipping DNS update because DnsZones configuration is missing.");
