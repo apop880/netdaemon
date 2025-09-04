@@ -12,8 +12,8 @@ namespace HomeAssistantApps;
 [NetDaemonApp]
 public class InsideLights
 {
-    private readonly BehaviorSubject<int> _colorTempSubject;
-    protected int ColorTemp
+    private readonly BehaviorSubject<int?> _colorTempSubject;
+    protected int? ColorTemp
     {
         get => _colorTempSubject.Value;
         private set => _colorTempSubject.OnNext(value);
@@ -43,9 +43,10 @@ public class InsideLights
                 }
             });
         });
-        _colorTempSubject = new BehaviorSubject<int>(daytimeColorTemp);
+        _colorTempSubject = new BehaviorSubject<int?>(null);
         _colorTempSubject
             .DistinctUntilChanged()
+            .Where(newColorTemp => newColorTemp.HasValue)
             .Subscribe(newColorTemp =>
             {
                 lights.ForEach((light) =>
@@ -71,14 +72,17 @@ public class InsideLights
             () => ColorTemp = daytimeColorTemp,
             () =>
             {
-                scheduler.Schedule(TimeSpan.Zero, repeat =>
+                if (ColorTemp.HasValue)
                 {
-                    if (ColorTemp > nighttimeColorTemp)
+                    scheduler.Schedule(TimeSpan.Zero, repeat =>
                     {
-                        ColorTemp = Math.Max(nighttimeColorTemp, ColorTemp - (daytimeColorTemp - nighttimeColorTemp) / 10);
-                        repeat(TimeSpan.FromMinutes(3));
-                    }
-                });
+                        if (ColorTemp > nighttimeColorTemp)
+                        {
+                            ColorTemp = Math.Max(nighttimeColorTemp, (ColorTemp ?? daytimeColorTemp) - (daytimeColorTemp - nighttimeColorTemp) / 10);
+                            repeat(TimeSpan.FromMinutes(3));
+                        }
+                    });
+                }
             },
             scheduler);
 
