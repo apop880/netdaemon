@@ -9,7 +9,6 @@ using System.Diagnostics;
 namespace HomeAssistantApps;
 
 [NetDaemonApp]
-[Focus]
 public class Zooz : IAsyncInitializable
 {
     private readonly ILogger<Zooz> _logger;
