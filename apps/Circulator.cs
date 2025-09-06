@@ -28,7 +28,7 @@ public class Circulator
 
         _logger.LogInformation("Circulator service is ready");
 
-        if (circulator.IsOn() && thermostat.Attributes?.HvacAction == "idle")
+        if (circulator.IsOn() && (thermostat.Attributes?.HvacAction == "idle" || thermostat.IsOff()))
         {
             StartCycle();
         }
