@@ -4,6 +4,7 @@ using NetDaemon.Client;
 using HomeAssistantApps.Extensions;
 using System.Threading.Tasks;
 using System.Text.Json.Serialization;
+using System.Diagnostics;
 
 namespace HomeAssistantApps;
 
@@ -96,22 +97,30 @@ public class Zooz : IAsyncInitializable
                             cfg.LinkedEntity.Toggle();
                             break;
                         case "KeyReleased":
-                            cfg.Held = false;
+                            if (cfg.LinkedEntity.IsOn() && cfg.Stopwatch != null)
+                            {
+                                cfg.Stopwatch.Stop(); // Stop the stopwatch
+                                var secondsHeld = cfg.Stopwatch.Elapsed.TotalSeconds; // Get precise elapsed time
+
+                                var rate = (cfg.Goal - cfg.Start) / cfg.Transition; // Brightness change rate per second
+                                var estimatedBrightness = cfg.Start + rate * secondsHeld;
+                                // Clamp the brightness to valid range (1 to 255)
+                                estimatedBrightness = Math.Clamp(estimatedBrightness, 1, 255);
+
+                                cfg.LinkedEntity.TurnOn(brightness: (long)estimatedBrightness);
+                            }
                             break;
                         case "KeyHeldDown":
                             if (cfg.LinkedEntity.IsOn())
                             {
-                                cfg.Held = true;
-                                _scheduler.Schedule(TimeSpan.Zero, (recur) =>
-                                {
-                                    cfg.LinkedEntity.TurnOn(brightnessStepPct:
-                                        (cfg.Invert ? -10 : 10) * (e.Data!.PropertyKey == "002" ? 1 : -1)
-                                    );
-                                    if (cfg.Held)
-                                    {
-                                        recur(TimeSpan.FromMilliseconds(500));
-                                    }
-                                });
+                                cfg.Stopwatch = Stopwatch.StartNew(); // Start the stopwatch
+                                cfg.Goal = e.Data.PropertyKey == "002" ? 255 : 1;
+                                if (cfg.Invert) cfg.Goal = 256 - cfg.Goal;
+                                cfg.Start = cfg.LinkedEntity.Attributes?.Brightness ?? 255;
+                                var transition = cfg.Delta * 5.0 / 255; // Scale transition time to 5 seconds for full range
+                                if (transition < 1) transition = 1; // Minimum transition time of 1s
+                                cfg.Transition = (long)transition;
+                                cfg.LinkedEntity.TurnOn(brightness: (long)cfg.Goal, transition: cfg.Transition);
                             }
                             break;
                     }
@@ -137,5 +146,9 @@ public class ZoozConfig
     public LightEntity? LinkedEntity { get; set; }
     public bool Invert { get; set; } = false;
     public string DeviceId { get; set; } = string.Empty;
-    public bool Held { get; set; } = false;
+    public double Goal { get; set; }
+    public double Start { get; set; }
+    public double Delta => Math.Abs(Goal - Start);
+    public long Transition { get; set; } = 1;
+    public Stopwatch? Stopwatch { get; set; } // Add Stopwatch property
 }
