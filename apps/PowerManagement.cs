@@ -23,11 +23,17 @@ public class PowerManagement
             });
 
         upsStatus.StateChanges()
-            .Where(s => s.New?.State != s.Old?.State && s.New?.State == "On Battery")
-            .Subscribe(_ =>
+            .Where(s => s.New?.State == "On Battery" || s.New?.State == "Online")
+            .Subscribe(s =>
             {
-                // Power lost (discharging from 100%)
-                telegram.All("Power has been lost to UPS. Currently discharging.");
+                if (s.New?.State == "On Battery")
+                {
+                    telegram.All("Power has been lost to UPS. Currently discharging.");
+                }
+                else if (s.New?.State == "Online")
+                {
+                    telegram.All("Power has been restored to UPS. Currently charging.");
+                }                
             });
 
         upsCharge.StateChanges()
@@ -59,7 +65,7 @@ public class PowerManagement
                 }
 
                 // Reached 100%
-                if (newState == FullyChargedThreshold && oldState < FullyChargedThreshold)
+                if (newState == FullyChargedThreshold && oldState < FullyChargedThreshold && shutdownSwitch.IsOff())
                 {
                     telegram.All("UPS is fully charged.");
                     shutdownSwitch.TurnOn();
