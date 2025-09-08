@@ -31,7 +31,8 @@ public class InsideLights
             entities.KitchenSink,
             entities.KitchenTable,
             entities.MarcySFunLampGroup,
-            entities.MorganSFunLampGroup
+            entities.MorganSFunLampGroup,
+            entities.LaundryHall
         ];
         lights.ForEach((light) =>
         {
