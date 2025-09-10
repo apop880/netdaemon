@@ -9,3 +9,4 @@ global using Microsoft.Extensions.Configuration;
 global using HomeAssistantApps.modules;
 global using HomeAssistantGenerated;
 global using System.Reactive.Concurrency;
+global using System.Text.Json.Serialization;

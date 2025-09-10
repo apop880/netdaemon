@@ -3,7 +3,6 @@ using System.Threading;
 using NetDaemon.Client;
 using HomeAssistantApps.Extensions;
 using System.Threading.Tasks;
-using System.Text.Json.Serialization;
 using System.Diagnostics;
 
 namespace HomeAssistantApps;
@@ -15,18 +14,16 @@ public class Zooz : IAsyncInitializable
     private readonly IHaContext _ha;
     private readonly Entities _entities;
     private readonly Services _services;
-    private readonly IScheduler _scheduler;
     private readonly IHomeAssistantApiManager _apiManager;
     private readonly List<ZoozConfig> _config;
 
-    public Zooz(ILogger<Zooz> logger, IHaContext ha, Entities entities, Services services, IScheduler scheduler, IHomeAssistantApiManager apiManager)
+    public Zooz(ILogger<Zooz> logger, IHaContext ha, Entities entities, Services services, IHomeAssistantApiManager apiManager)
     {
         _logger = logger;
         _entities = entities;
         _apiManager = apiManager;
         _services = services;
         _ha = ha;
-        _scheduler = scheduler;
 
         _config =
         [
