@@ -163,7 +163,7 @@ public class OutsideLightsApp
             var porchOn = porch.IsOn();
             var deckOn = deck.IsOn();
 
-            if ((garageOn && garageBrightnessEqual && porchOn && deckOn) || !lightOnPeriod.IsNow())
+            if ((garageOn && garageBrightnessEqual && /*porchOn &&*/ deckOn) || !lightOnPeriod.IsNow())
             {
                 _logger.LogInformation("Lights on check successful.");
             }
@@ -204,7 +204,7 @@ public class OutsideLightsApp
             var porchOff = porch.IsOff();
             var deckOff = deck.IsOff();
 
-            if ((garageOff && porchOff && deckOff) || lightOnPeriod.IsNow())
+            if ((garageOff && /*porchOff &&*/ deckOff) || lightOnPeriod.IsNow())
             {
                 _logger.LogInformation("Lights off check successful.");
             }
