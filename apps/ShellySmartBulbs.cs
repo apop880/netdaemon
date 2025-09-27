@@ -13,6 +13,10 @@ public class ShellySmartBulbs
             new() {
                 Entity = entities.BinarySensor.TheaterShellyInput,
                 LinkedEntity = entities.Light.Theater
+            },
+            new() {
+                Entity = entities.BinarySensor.BasementHallShellyInput,
+                LinkedEntity = entities.Light.BasementHallLight
             }
         };
 
