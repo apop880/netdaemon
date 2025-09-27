@@ -49,6 +49,16 @@ public class Zooz : IAsyncInitializable
                 Entity = _entities.Light.OfficeMainLights,
                 LinkedEntity = _entities.Light.OfficeBulbs,
                 Invert = true
+            },
+            new() {
+                Entity = _entities.Light.GuestBedroom,
+                LinkedEntity = _entities.Light.GuestBedroomLights,
+                Invert = true
+            },
+            new() {
+                Entity = _entities.Light.Bar,
+                LinkedEntity = _entities.Light.BarLights,
+                Invert = true
             }
         ];
     }
