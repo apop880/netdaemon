@@ -116,8 +116,16 @@ public class OutsideLightsApp
                 .Where(o => o.Contains(holiday?.Wled!))
                 .OrderBy(_ => Random.Shared.NextDouble())];
 
-            _entities.Select.FrontPorchPreset.SelectOption(option: filteredEffectList[wledEffectPos % filteredEffectList.Count]);
-            _entities.Select.DeckPreset.SelectOption(option: filteredEffectList[wledEffectPos++ % filteredEffectList.Count]);
+            // Guard against empty effect list to avoid divide-by-zero when using modulo with Count
+            if (filteredEffectList.Count > 0)
+            {
+                _entities.Select.FrontPorchPreset.SelectOption(option: filteredEffectList[wledEffectPos % filteredEffectList.Count]);
+                _entities.Select.DeckPreset.SelectOption(option: filteredEffectList[wledEffectPos++ % filteredEffectList.Count]);
+            }
+            else
+            {
+                _logger.LogWarning("No matching WLED effects found for holiday {lightMode} (Wled='{WledName}'). Skipping WLED SelectOption calls.", lightMode, holiday?.Wled);
+            }
 
             _scheduler.Schedule(TimeSpan.FromSeconds(30), repeat =>
             {
@@ -139,15 +147,19 @@ public class OutsideLightsApp
                 }
             });
 
-            _scheduler.Schedule(TimeSpan.FromMinutes(10), repeat =>
+            // Only schedule WLED effect rotation if we have effects to rotate through
+            if (filteredEffectList.Count > 0)
             {
-                if (lightOnPeriod.IsNow())
+                _scheduler.Schedule(TimeSpan.FromMinutes(10), repeat =>
                 {
-                    _entities.Select.FrontPorchPreset.SelectOption(option: filteredEffectList[wledEffectPos % filteredEffectList.Count]);
-                    _entities.Select.DeckPreset.SelectOption(option: filteredEffectList[wledEffectPos++ % filteredEffectList.Count]);
-                    repeat(TimeSpan.FromMinutes(10));
-                }
-            });
+                    if (lightOnPeriod.IsNow())
+                    {
+                        _entities.Select.FrontPorchPreset.SelectOption(option: filteredEffectList[wledEffectPos % filteredEffectList.Count]);
+                        _entities.Select.DeckPreset.SelectOption(option: filteredEffectList[wledEffectPos++ % filteredEffectList.Count]);
+                        repeat(TimeSpan.FromMinutes(10));
+                    }
+                });
+            }
         }
 
         var checkAttempts = 0;
