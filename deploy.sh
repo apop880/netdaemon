@@ -1,10 +1,10 @@
 #!/bin/sh
 set -e # Exit immediately if a command exits with a non-zero status.
 
-echo "🚀 Building to /mnt/hass_config/netdaemon5..."
+echo "🚀 Building to /mnt/hass_config/netdaemon6..."
 
 # Build the project
-dotnet publish -c Release -o /mnt/hass_config/netdaemon5
+dotnet publish -c Release -o /mnt/hass_config/netdaemon6
 
 # Restart the add-on
 echo "🔄 Restarting Netdaemon add-on..."
@@ -15,7 +15,7 @@ HASS_TOKEN=$(jq -r '.HomeAssistant.Token' "$APPSETTINGS_FILE")
 curl -X POST \
   -H "Authorization: Bearer $HASS_TOKEN" \
   -H "Content-Type: application/json" \
-  -d '{"addon": "c6a2317c_netdaemon5"}' \
+  -d '{"addon": "c6a2317c_netdaemon6"}' \
   "$HASS_BASE_URL/api/services/hassio/addon_restart"
 
 echo "✅ Netdaemon add-on restarted."

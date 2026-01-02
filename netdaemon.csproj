@@ -2,8 +2,8 @@
 
     <PropertyGroup>
         <OutputType>Exe</OutputType>
-        <TargetFramework>net9.0</TargetFramework>
-        <LangVersion>13.0</LangVersion>
+        <TargetFramework>net10.0</TargetFramework>
+        <LangVersion>14.0</LangVersion>
         <Nullable>enable</Nullable>
         <RootNamespace>netdaemon</RootNamespace>
     </PropertyGroup>
@@ -26,17 +26,17 @@
     </Target>
         
     <ItemGroup>
-        <PackageReference Include="NetDaemon.AppModel" Version="25.18.1" />
-        <PackageReference Include="NetDaemon.Runtime" Version="25.18.1" />
-        <PackageReference Include="NetDaemon.HassModel" Version="25.18.1" />
-        <PackageReference Include="NetDaemon.Client" Version="25.18.1" />
-        <PackageReference Include="NetDaemon.Extensions.Scheduling" Version="25.18.1" />
-        <PackageReference Include="NetDaemon.Extensions.Logging" Version="25.18.1" />
-        <PackageReference Include="NetDaemon.Extensions.Tts" Version="25.18.1" />
-        <PackageReference Include="Occurify" Version="0.9.0" />
-        <PackageReference Include="Occurify.Astro" Version="0.9.0" />
-        <PackageReference Include="Occurify.Reactive" Version="0.9.0" />
-        <PackageReference Include="Occurify.TimeZones" Version="0.9.0" />
-        <PackageReference Include="Polly" Version="8.6.3" />
+        <PackageReference Include="NetDaemon.AppModel" Version="25.48.0" />
+        <PackageReference Include="NetDaemon.Runtime" Version="25.48.0" />
+        <PackageReference Include="NetDaemon.HassModel" Version="25.48.0" />
+        <PackageReference Include="NetDaemon.Client" Version="25.48.0" />
+        <PackageReference Include="NetDaemon.Extensions.Scheduling" Version="25.48.0" />
+        <PackageReference Include="NetDaemon.Extensions.Logging" Version="25.48.0" />
+        <PackageReference Include="NetDaemon.Extensions.Tts" Version="25.48.0" />
+        <PackageReference Include="Occurify" Version="0.10.0" />
+        <PackageReference Include="Occurify.Astro" Version="0.10.0" />
+        <PackageReference Include="Occurify.Reactive" Version="0.10.0" />
+        <PackageReference Include="Occurify.TimeZones" Version="0.10.0" />
+        <PackageReference Include="Polly" Version="8.6.5" />
     </ItemGroup>
 </Project>

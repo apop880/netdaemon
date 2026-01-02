@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 
@@ -10,25 +11,25 @@ public class Telegram(IServiceProvider serviceProvider, ILogger<Telegram> logger
 
     public void Alex(string message)
     {
-        SendMessage(message: message, target: _settings.Alex);
+        SendMessage(message: message, target: [_settings.Alex]);
     }
 
     public void Julie(string message)
     {
-        SendMessage(message: message, target: _settings.Julie);
+        SendMessage(message: message, target: [_settings.Julie]);
     }
 
     public void System(string message)
     {
-        SendMessage(message: message, target: _settings.System);
+        SendMessage(message: message, target: [_settings.System]);
     }
 
     public void All(string message)
     {
-        SendMessage(message: message, target: new[] { _settings.Julie, _settings.Alex });
+        SendMessage(message: message, target: [_settings.Julie, _settings.Alex]);
     }
 
-    private async void SendMessage(string message, object? target)
+    private async void SendMessage(string message, IEnumerable<string> target)
     {
         try
         {
@@ -46,7 +47,7 @@ public class Telegram(IServiceProvider serviceProvider, ILogger<Telegram> logger
 
 public class TelegramSettings
 {
-    public int Julie { get; set; }
-    public int Alex { get; set; }
-    public int System { get; set; }
+    public required string Julie { get; set; }
+    public required string Alex { get; set; }
+    public required string System { get; set; }
 }
