@@ -24,6 +24,11 @@ public class Wakeup
                 LinkedWhiteNoise = entities.InputBoolean.WhiteNoiseMarcy
             },
         };
+        var audioFiles = new List<string>
+        {
+            "http://192.168.1.7:8754/LionKing.mp3",
+            "http://192.168.1.7:8754/DannyGoWakeUp.mp3"
+        };
 
         foreach (var cfg in config)
         {
@@ -39,18 +44,38 @@ public class Wakeup
                 {
                     cfg.LinkedLight.TurnOn();
                     cfg.LinkedWhiteNoise?.TurnOff();
+                    cfg.LinkedMediaPlayer.VolumeSet(0.5);
                     
-                    await Task.Delay(3000);                    
-                    cfg.LinkedMediaPlayer.PlayMedia(new {
-                            media_content_type = "music",
-                            media_content_id = "http://192.168.1.7:8754/LionKing.mp3"
-                    });
+                    await Task.Delay(3000);
                     
-                    await Task.Delay(3000);                    
+                    // Start with first file
+                    int currentFileIndex = 0;
                     cfg.LinkedMediaPlayer.PlayMedia(new {
-                            media_content_type = "music",
-                            media_content_id = "http://192.168.1.7:8754/DannyGoWakeUp.mp3"
+                        media_content_type = "music",
+                        media_content_id = audioFiles[currentFileIndex]
                     });
+
+                    // Listen for media player state changes to play next file (only during this wakeup)
+                    IDisposable? mediaPlayerSubscription = null;
+                    mediaPlayerSubscription = cfg.LinkedMediaPlayer.StateChanges()
+                        .Where(state => state.Old?.State == "playing" && state.New?.State != "playing")
+                        .Subscribe(_ =>
+                        {
+                            currentFileIndex++;
+                            
+                            if (currentFileIndex < audioFiles.Count)
+                            {
+                                cfg.LinkedMediaPlayer.PlayMedia(new {
+                                    media_content_type = "music",
+                                    media_content_id = audioFiles[currentFileIndex]
+                                });
+                            }
+                            else
+                            {
+                                cfg.LinkedMediaPlayer.VolumeSet(0.2);
+                                mediaPlayerSubscription?.Dispose();
+                            }
+                        });
                 });
         }
     }
