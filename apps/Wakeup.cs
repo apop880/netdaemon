@@ -58,7 +58,8 @@ public class Wakeup
                     // Listen for media player state changes to play next file (only during this wakeup)
                     IDisposable? mediaPlayerSubscription = null;
                     mediaPlayerSubscription = cfg.LinkedMediaPlayer.StateChanges()
-                        .Where(state => state.Old?.State == "playing" && state.New?.State != "playing")
+                        // Only advance when playback actually went to "idle" (end of track)
+                        .Where(state => state.Old?.State == "playing" && state.New?.State == "idle")
                         .Subscribe(_ =>
                         {
                             currentFileIndex++;
