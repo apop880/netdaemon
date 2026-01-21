@@ -15,19 +15,24 @@ public class Wakeup
                 Entity = entities.InputButton.MorganWakeup,
                 LinkedLight = entities.Light.MorganFun,
                 LinkedMediaPlayer = entities.MediaPlayer.MorgansRoomSpeaker,
-                LinkedWhiteNoise = entities.InputBoolean.WhiteNoiseMorgan
+                LinkedWhiteNoise = entities.InputBoolean.WhiteNoiseMorgan,
+                AudioFiles =
+                [
+                    "http://192.168.1.7:8754/LionKing.mp3",
+                    "http://192.168.1.7:8754/can_you_feel_the_love_tonight.mp3"
+                ]
             },
             new() {
                 Entity = entities.InputButton.MarcyWakeup,
                 LinkedLight = entities.Light.MarcySFunLampGroup,
                 LinkedMediaPlayer = entities.MediaPlayer.MarcysRoomSpeaker,
-                LinkedWhiteNoise = entities.InputBoolean.WhiteNoiseMarcy
-            },
-        };
-        var audioFiles = new List<string>
-        {
-            "http://192.168.1.7:8754/LionKing.mp3",
-            "http://192.168.1.7:8754/DannyGoWakeUp.mp3"
+                LinkedWhiteNoise = entities.InputBoolean.WhiteNoiseMarcy,
+                AudioFiles =
+                [
+                    "http://192.168.1.7:8754/LionKing.mp3",
+                    "http://192.168.1.7:8754/DannyGoWakeUp.mp3"
+                ]
+            }
         };
 
         foreach (var cfg in config)
@@ -52,7 +57,7 @@ public class Wakeup
                     int currentFileIndex = 0;
                     cfg.LinkedMediaPlayer.PlayMedia(new {
                         media_content_type = "music",
-                        media_content_id = audioFiles[currentFileIndex]
+                        media_content_id = cfg.AudioFiles[currentFileIndex]
                     });
 
                     // Listen for media player state changes to play next file (only during this wakeup)
@@ -64,11 +69,11 @@ public class Wakeup
                         {
                             currentFileIndex++;
                             
-                            if (currentFileIndex < audioFiles.Count)
+                            if (currentFileIndex < cfg.AudioFiles.Count)
                             {
                                 cfg.LinkedMediaPlayer.PlayMedia(new {
                                     media_content_type = "music",
-                                    media_content_id = audioFiles[currentFileIndex]
+                                    media_content_id = cfg.AudioFiles[currentFileIndex]
                                 });
                             }
                             else
@@ -88,4 +93,5 @@ public class WakeupConfig
     public LightEntity? LinkedLight { get; set; }
     public MediaPlayerEntity? LinkedMediaPlayer { get; set; }
     public InputBooleanEntity? LinkedWhiteNoise { get; set; }
+    public required List<string> AudioFiles { get; set; }
 }
