@@ -28,7 +28,7 @@ public class WhiteNoise
         {
             IDisposable? mediaPlayerSubscription = null;
             cfg.Entity
-                .StateChangesWithCurrent()
+                .StateChanges()
                 .Subscribe(s =>
                 {
                     if (s.New?.State == "on")
