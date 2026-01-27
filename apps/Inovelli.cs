@@ -112,28 +112,34 @@ record InovelliEventData
     [JsonPropertyName("device_id")] public string? DeviceId { get; set; }
     [JsonPropertyName("args")] public JsonElement? Args { get; set; }
 
-    public string Button
+    public string Button => GetArgProperty("button");
+
+    public string PressType => GetArgProperty("press_type");
+
+    private bool TryGetArgsSource(out JsonElement source)
     {
-        get
+        source = default;
+        if (!Args.HasValue) return false;
+        var node = Args.Value;
+        if (node.ValueKind == JsonValueKind.Object)
         {
-            if (Args.HasValue && Args.Value.TryGetProperty("button", out var b))
-            {
-                return b.GetString() ?? "unknown";
-            }
-            return "unknown";
+            source = node;
+            return true;
         }
+        if (node.ValueKind == JsonValueKind.Array && node.GetArrayLength() > 0)
+        {
+            source = node[0];
+            return true;
+        }
+        return false;
     }
 
-    public string PressType
+    private string GetArgProperty(string name)
     {
-        get
-        {
-            if (Args.HasValue && Args.Value.TryGetProperty("press_type", out var p))
-            {
-                return p.GetString() ?? "unknown";
-            }
-            return "unknown";
-        }
+        if (!TryGetArgsSource(out var s)) return "unknown";
+        if (s.ValueKind == JsonValueKind.Object && s.TryGetProperty(name, out var v))
+            return v.GetString() ?? "unknown";
+        return "unknown";
     }
 
     public bool IsValid
