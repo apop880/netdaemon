@@ -76,7 +76,7 @@ public class OutsideLightsApp
         _logger.LogInformation("Turning on outside lights.");
         string lightMode = "Standard";
         HolidaySetting? holiday = null;
-        _entities.Light.WledPorch.TurnOn();
+        _entities.Light.WledDeck.TurnOn();
 
         foreach (var h in _config)
         {
@@ -112,14 +112,13 @@ public class OutsideLightsApp
                 _entities.Switch.OutdoorPlug2.TurnOn();
             }
 
-            IReadOnlyList<string> filteredEffectList = [.. _entities.Select.FrontPorchPreset!.Attributes!.Options!
+            IReadOnlyList<string> filteredEffectList = [.. _entities.Select.DeckPreset!.Attributes!.Options!
                 .Where(o => o.Contains(holiday?.Wled!))
                 .OrderBy(_ => Random.Shared.NextDouble())];
 
             // Guard against empty effect list to avoid divide-by-zero when using modulo with Count
             if (filteredEffectList.Count > 0)
             {
-                _entities.Select.FrontPorchPreset.SelectOption(option: filteredEffectList[wledEffectPos % filteredEffectList.Count]);
                 _entities.Select.DeckPreset.SelectOption(option: filteredEffectList[wledEffectPos++ % filteredEffectList.Count]);
             }
             else
@@ -154,7 +153,6 @@ public class OutsideLightsApp
                 {
                     if (lightOnPeriod.IsNow())
                     {
-                        _entities.Select.FrontPorchPreset.SelectOption(option: filteredEffectList[wledEffectPos % filteredEffectList.Count]);
                         _entities.Select.DeckPreset.SelectOption(option: filteredEffectList[wledEffectPos++ % filteredEffectList.Count]);
                         repeat(TimeSpan.FromMinutes(10));
                     }
@@ -168,14 +166,12 @@ public class OutsideLightsApp
             var garage1 = _entities.Light.Garage1;
             var garage2 = _entities.Light.Garage2;
             var garage3 = _entities.Light.Garage3;
-            var porch = _entities.Light.WledPorch;
             var deck = _entities.Light.WledDeck;
             var garageOn = garage1.IsOn() && garage2.IsOn() && garage3.IsOn();
             var garageBrightnessEqual = garage1.Attributes?.Brightness == garage2.Attributes?.Brightness && garage2.Attributes?.Brightness == garage3.Attributes?.Brightness;
-            var porchOn = porch.IsOn();
             var deckOn = deck.IsOn();
 
-            if ((garageOn && garageBrightnessEqual && /*porchOn &&*/ deckOn) || !lightOnPeriod.IsNow())
+            if ((garageOn && garageBrightnessEqual && deckOn) || !lightOnPeriod.IsNow())
             {
                 _logger.LogInformation("Lights on check successful.");
             }
@@ -188,7 +184,6 @@ public class OutsideLightsApp
                     _telegram.System("Light on check has failed 5 times. There may be an issue.");
                 }
                 _entities.Light.Garage.TurnOn(brightnessPct: 80, colorTempKelvin: 2700);
-                _entities.Light.WledPorch.TurnOn();
                 _entities.Light.WledDeck.TurnOn();
                 repeat(TimeSpan.FromMinutes(10));
             }
@@ -200,7 +195,6 @@ public class OutsideLightsApp
         var checkAttempts = 0;
         _logger.LogInformation("Turning off outside lights.");
         _entities.Light.WledDeck.TurnOff();
-        _entities.Light.WledPorch.TurnOff();
         _entities.Light.Garage.TurnOff();
         _entities.Switch.OutdoorPlug1.TurnOff();
         _entities.Switch.OutdoorPlug2.TurnOff();
@@ -210,10 +204,8 @@ public class OutsideLightsApp
             var garage1 = _entities.Light.Garage1;
             var garage2 = _entities.Light.Garage2;
             var garage3 = _entities.Light.Garage3;
-            var porch = _entities.Light.WledPorch;
             var deck = _entities.Light.WledDeck;
             var garageOff = garage1.IsOff() && garage2.IsOff() && garage3.IsOff();
-            var porchOff = porch.IsOff();
             var deckOff = deck.IsOff();
 
             if ((garageOff && /*porchOff &&*/ deckOff) || lightOnPeriod.IsNow())
@@ -229,7 +221,6 @@ public class OutsideLightsApp
                     _telegram.System("Light off check has failed 5 times. There may be an issue.");
                 }
                 _entities.Light.Garage.TurnOff();
-                _entities.Light.WledPorch.TurnOff();
                 _entities.Light.WledDeck.TurnOff();
                 repeat(TimeSpan.FromMinutes(10));
             }
