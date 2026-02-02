@@ -41,6 +41,10 @@ public class Bedtime
                 {
                     if (s.New?.State == "on")
                     {
+                        if (cfg.BedtimeEntity != null && cfg.BedtimeEntity.IsOff())
+                        {
+                            cfg.BedtimeEntity.TurnOn();
+                        }
                         logger.LogInformation("Starting white noise for {Entity}", cfg.Entity.EntityId);
                         cfg.LinkedMediaPlayer.PlayMedia(new
                         {
@@ -54,6 +58,10 @@ public class Bedtime
                     }
                     else if (s.New?.State == "off")
                     {
+                        if (cfg.BedtimeEntity != null && cfg.BedtimeEntity.IsOn())
+                        {
+                            cfg.BedtimeEntity.TurnOff();
+                        }
                         logger.LogInformation("Stopping white noise for {Entity}", cfg.Entity.EntityId);
                         cfg.LinkedMediaPlayer.MediaStop();
                         mediaPlayerSubscription?.Dispose();
