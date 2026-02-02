@@ -61,12 +61,18 @@ public class Bedtime
                 });
 
             cfg.BedtimeEntity?.StateChanges()
-                    .Where(s => s.New?.State == "on")
-                    .Subscribe(_ =>
+                    .Subscribe(s =>
                     {
-                        logger.LogInformation("Bedtime started for {Entity}", cfg.BedtimeEntity.EntityId);
-                        cfg.Entity.TurnOn();
-                        cfg.Light?.TurnOff();
+                        if (s.New?.State == "on")
+                        {
+                            cfg.Entity.TurnOn();
+                            cfg.Light?.TurnOff();
+                        }
+                        else if (s.New?.State == "off")
+                        {
+                            cfg.Entity.TurnOff();
+                            cfg.Light?.TurnOn();
+                        }
                     });
         }
     }
