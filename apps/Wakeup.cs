@@ -13,9 +13,8 @@ public class Wakeup
         {
             new() {
                 Entity = entities.InputButton.MorganWakeup,
-                LinkedLight = entities.Light.MorganFun,
+                LinkedBedtime = entities.InputBoolean.MorganBed,
                 LinkedMediaPlayer = entities.MediaPlayer.MorgansRoomSpeaker,
-                LinkedWhiteNoise = entities.InputBoolean.WhiteNoiseMorgan,
                 AudioFiles =
                 [
                     "http://192.168.1.7:8754/LionKing.mp3",
@@ -24,9 +23,8 @@ public class Wakeup
             },
             new() {
                 Entity = entities.InputButton.MarcyWakeup,
-                LinkedLight = entities.Light.MarcySFunLampGroup,
+                LinkedBedtime = entities.InputBoolean.MarcyBed,
                 LinkedMediaPlayer = entities.MediaPlayer.MarcysRoomSpeaker,
-                LinkedWhiteNoise = entities.InputBoolean.WhiteNoiseMarcy,
                 AudioFiles =
                 [
                     "http://192.168.1.7:8754/LionKing.mp3",
@@ -37,7 +35,7 @@ public class Wakeup
 
         foreach (var cfg in config)
         {
-            if (cfg.Entity is null || cfg.LinkedLight is null || cfg.LinkedMediaPlayer is null)
+            if (cfg.Entity is null || cfg.LinkedBedtime is null || cfg.LinkedMediaPlayer is null)
             {
                 logger.LogWarning("Wakeup group is not configured properly.");
                 continue;
@@ -47,8 +45,7 @@ public class Wakeup
                 .StateChanges()
                 .SubscribeAsync(async _ =>
                 {
-                    cfg.LinkedLight.TurnOn();
-                    cfg.LinkedWhiteNoise?.TurnOff();
+                    cfg.LinkedBedtime.TurnOff();
                     cfg.LinkedMediaPlayer.VolumeSet(0.5);
                     
                     await Task.Delay(3000);
@@ -90,8 +87,7 @@ public class Wakeup
 public class WakeupConfig
 {
     public InputButtonEntity? Entity { get; set; }
-    public LightEntity? LinkedLight { get; set; }
     public MediaPlayerEntity? LinkedMediaPlayer { get; set; }
-    public InputBooleanEntity? LinkedWhiteNoise { get; set; }
+    public InputBooleanEntity? LinkedBedtime { get; set; }
     public required List<string> AudioFiles { get; set; }
 }
