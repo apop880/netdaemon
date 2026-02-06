@@ -4,12 +4,12 @@ using System.Threading.Tasks;
 namespace HomeAssistantApps;
 
 [NetDaemonApp]
-public class Wakeup
+public class KidsWakeup
 {
 
-    public Wakeup(ILogger<Wakeup> logger, Entities entities)
+    public KidsWakeup(ILogger<KidsWakeup> logger, Entities entities)
     {
-        var config = new List<WakeupConfig>
+        var config = new List<KidsWakeupConfig>
         {
             new() {
                 Entity = entities.InputButton.MorganWakeup,
@@ -84,7 +84,7 @@ public class Wakeup
     }
 }
 
-public class WakeupConfig
+public class KidsWakeupConfig
 {
     public InputButtonEntity? Entity { get; set; }
     public MediaPlayerEntity? LinkedMediaPlayer { get; set; }
