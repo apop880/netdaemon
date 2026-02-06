@@ -77,15 +77,15 @@ public class Circulator
 
     private void ThermostatHvacActionChanged(string? newHvacAction, string? oldHvacAction)
     {
-        if (newHvacAction == "cooling" && (oldHvacAction == "idle" || oldHvacAction is null))
+        if ((newHvacAction == "cooling" || newHvacAction == "heating") && (oldHvacAction == "idle" || oldHvacAction is null))
         {
-            // Turn off fan and cancel timers when cooling starts
+            // Turn off fan and cancel timers when cooling/heating starts
             _timer?.Dispose();
             ToggleFan("auto");
         }
-        else if ((newHvacAction == "idle" || newHvacAction is null) && oldHvacAction == "cooling")
+        else if ((newHvacAction == "idle" || newHvacAction is null) && (oldHvacAction == "cooling" || oldHvacAction == "heating"))
         {
-            // When cooling stops, turn off fan and wait 10 minutes before starting cycle
+            // When cooling/heating stops, turn off fan and wait 10 minutes before starting cycle
             _timer?.Dispose();
             ToggleFan("auto");
             _timer = _scheduler.Schedule(TimeSpan.FromMinutes(10), () =>
