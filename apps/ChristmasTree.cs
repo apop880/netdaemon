@@ -4,7 +4,7 @@ using NetDaemon.Extensions.Scheduler;
 
 namespace HomeAssistantApps;
 
-[NetDaemonApp]
+/*[NetDaemonApp]
 public class ChristmasTree
 {
     public ChristmasTree(Entities entities, IScheduler scheduler, IConfiguration configuration)
@@ -61,4 +61,4 @@ public class ChristmasTree
                 }
             });
     }
-}
+}*/
