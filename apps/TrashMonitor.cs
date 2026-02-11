@@ -6,25 +6,26 @@ namespace HomeAssistantApps
 {
     public class TrashMonitorConfig
     {
-        public required InputTextEntity InputTextEntity { get; set; } // e.g., input_text.trash_status
+        public required InputTextEntity InputTextEntity { get; set; }
+        public required InputBooleanEntity VacationModeEntity { get; set; }
         public DateTime RecyclingReferenceDate { get; set; } // A past date where recycling definitely occurred
     }
 
     [NetDaemonApp]
-    [Focus]
     public class TrashMonitor
     {
         private readonly IScheduler _scheduler;
         private readonly TrashMonitorConfig _config;
         private readonly Telegram _telegram;
 
-        public TrashMonitor(IScheduler scheduler, InputTextEntities inputTextEntities, Telegram telegram)
+        public TrashMonitor(IScheduler scheduler, Entities entities, Telegram telegram)
         {
             _scheduler = scheduler;
             _telegram = telegram;
             _config = new TrashMonitorConfig
             {
-                InputTextEntity = inputTextEntities.TrashStatus,
+                InputTextEntity = entities.InputText.TrashStatus,
+                VacationModeEntity = entities.InputBoolean.VacationMode,
                 RecyclingReferenceDate = new DateTime(2026, 1, 30)
             };
 
@@ -34,6 +35,11 @@ namespace HomeAssistantApps
 
         private void CheckTrashSchedule()
         {
+            if (_config.VacationModeEntity.IsOn())
+            {
+                // If on vacation mode, skip
+                return;
+            }
             var today = DateTime.Today;
             
             // 1. Calculate the actual pickup date for this week
