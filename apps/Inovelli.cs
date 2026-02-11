@@ -1,28 +1,22 @@
 using System.Collections.Generic;
-using System.Threading;
-using NetDaemon.Client;
-using HomeAssistantApps.Extensions;
-using System.Threading.Tasks;
 using System.Diagnostics;
 using System.Text.Json;
 
 namespace HomeAssistantApps;
 
 [NetDaemonApp]
-public class Inovelli : IAsyncInitializable
+public class Inovelli
 {
     private readonly ILogger<Inovelli> _logger;
     private readonly IHaContext _ha;
     private readonly Entities _entities;
     private readonly Services _services;
-    private readonly IHomeAssistantApiManager _apiManager;
     private readonly List<InovelliConfig> _config;
 
-    public Inovelli(ILogger<Inovelli> logger, IHaContext ha, Entities entities, Services services, IHomeAssistantApiManager apiManager)
+    public Inovelli(ILogger<Inovelli> logger, IHaContext ha, Entities entities, Services services)
     {
         _logger = logger;
         _entities = entities;
-        _apiManager = apiManager;
         _services = services;
         _ha = ha;
 
@@ -33,10 +27,6 @@ public class Inovelli : IAsyncInitializable
                 LinkedEntity = _entities.Light.Theater
             }
         ];
-    }
-
-    public async Task InitializeAsync(CancellationToken cancellationToken)
-    {
         foreach (var cfg in _config)
         {
             if (cfg.Entity is null || cfg.LinkedEntity is null)
@@ -44,11 +34,11 @@ public class Inovelli : IAsyncInitializable
                 _logger.LogWarning("Inovelli configuration has null entity or linked entity, skipping.");
                 continue;
             }
-            cfg.DeviceId = await _apiManager.GetDeviceId(cfg.Entity, cancellationToken);
+            cfg.DeviceId = cfg.Entity?.Registration?.Device?.Id ?? string.Empty;
 
             if (string.IsNullOrEmpty(cfg.DeviceId))
             {
-                _logger.LogWarning("Could not determine DeviceId for entity {EntityId}, skipping.", cfg.Entity.EntityId);
+                _logger.LogWarning("Could not determine DeviceId for entity {EntityId}, skipping.", cfg.Entity?.EntityId);
                 continue;
             }
             // Todo: Update the light bar based on the light state
@@ -159,8 +149,8 @@ record InovelliEventData
 
 public class InovelliConfig
 {
-    public Entity? Entity { get; set; }
-    public LightEntity? LinkedEntity { get; set; }
+    public required Entity Entity { get; set; }
+    public required LightEntity LinkedEntity { get; set; }
     public bool Invert { get; set; } = false;
     public string DeviceId { get; set; } = string.Empty;
     public double Goal { get; set; }

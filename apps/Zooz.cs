@@ -1,27 +1,21 @@
 using System.Collections.Generic;
-using System.Threading;
-using NetDaemon.Client;
-using HomeAssistantApps.Extensions;
-using System.Threading.Tasks;
 using System.Diagnostics;
 
 namespace HomeAssistantApps;
 
 [NetDaemonApp]
-public class Zooz : IAsyncInitializable
+public class Zooz
 {
     private readonly ILogger<Zooz> _logger;
     private readonly IHaContext _ha;
     private readonly Entities _entities;
     private readonly Services _services;
-    private readonly IHomeAssistantApiManager _apiManager;
     private readonly List<ZoozConfig> _config;
 
-    public Zooz(ILogger<Zooz> logger, IHaContext ha, Entities entities, Services services, IHomeAssistantApiManager apiManager)
+    public Zooz(ILogger<Zooz> logger, IHaContext ha, Entities entities, Services services)
     {
         _logger = logger;
         _entities = entities;
-        _apiManager = apiManager;
         _services = services;
         _ha = ha;
 
@@ -61,10 +55,6 @@ public class Zooz : IAsyncInitializable
                 Invert = true
             }
         ];
-    }
-
-    public async Task InitializeAsync(CancellationToken cancellationToken)
-    {
         foreach (var cfg in _config)
         {
             if (cfg.Entity is null || cfg.LinkedEntity is null)
@@ -72,11 +62,11 @@ public class Zooz : IAsyncInitializable
                 _logger.LogWarning("Zooz configuration has null entity or linked entity, skipping.");
                 continue;
             }
-            cfg.DeviceId = await _apiManager.GetDeviceId(cfg.Entity, cancellationToken);
+            cfg.DeviceId = cfg.Entity?.Registration?.Device?.Id ?? string.Empty;
 
             if (string.IsNullOrEmpty(cfg.DeviceId))
             {
-                _logger.LogWarning("Could not determine DeviceId for entity {EntityId}, skipping.", cfg.Entity.EntityId);
+                _logger.LogWarning("Could not determine DeviceId for entity {EntityId}, skipping.", cfg.Entity?.EntityId);
                 continue;
             }
 
@@ -132,7 +122,6 @@ public class Zooz : IAsyncInitializable
                     }
                 });
         }
-        return;
     }
 }
 
@@ -148,8 +137,8 @@ record ZWaveValueNotificationData
 
 public class ZoozConfig
 {
-    public Entity? Entity { get; set; }
-    public LightEntity? LinkedEntity { get; set; }
+    public required Entity Entity { get; set; }
+    public required LightEntity LinkedEntity { get; set; }
     public bool Invert { get; set; } = false;
     public string DeviceId { get; set; } = string.Empty;
     public double Goal { get; set; }
