@@ -29,15 +29,24 @@ namespace HomeAssistantApps
                 RecyclingReferenceDate = new DateTime(2026, 1, 30)
             };
 
-            // Run every day at 6:00 AM
-            _scheduler.ScheduleCron("0 6 * * *", CheckTrashSchedule);
+            // Run every day at 6:00 AM and 8:00 PM
+            _scheduler.ScheduleCron("0 6 * * *", () => CheckTrashSchedule());
+            _scheduler.ScheduleCron("0 20 * * *", () => CheckTrashSchedule(true));
         }
 
-        private void CheckTrashSchedule()
+        private void CheckTrashSchedule(bool notifyOnly = false)    
         {
-            if (_config.VacationModeEntity.IsOn())
+            var currentStatus = _config.InputTextEntity.State;
+
+            // If status is not empty/unknown, the user hasn't cleared it yet
+            if (!string.IsNullOrEmpty(currentStatus) && !currentStatus.Equals("unknown", StringComparison.CurrentCultureIgnoreCase))
             {
-                // If on vacation mode, skip
+                _telegram.All($"Reminder: Take out {currentStatus}!");
+                return;
+            }
+            // If on vacation mode or notify only, skip
+            if (_config.VacationModeEntity.IsOn() || notifyOnly)
+            {
                 return;
             }
             var today = DateTime.Today;
@@ -53,18 +62,6 @@ namespace HomeAssistantApps
             if (today == pickupDate.AddDays(-1))
             {
                 _config.InputTextEntity.SetValue(statusMessage);
-            }
-
-            // LOGIC B: Is Today the pickup day? (Check if cleared, otherwise Nag)
-            else if (today == pickupDate)
-            {
-                var currentStatus = _config.InputTextEntity.State;
-
-                // If status is not empty/unknown, the user hasn't cleared it yet
-                if (!string.IsNullOrEmpty(currentStatus) && !currentStatus.Equals("unknown", StringComparison.CurrentCultureIgnoreCase))
-                {
-                    _telegram.All($"Reminder: Take out {currentStatus}!");
-                }
             }
         }
 
