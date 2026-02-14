@@ -31,12 +31,6 @@ dotnet restore
 dotnet run
 ```
 
-### Lint/Format
-```bash
-dotnet format --verify-no-changes
-dotnet format
-```
-
 ### Tests
 No test framework is currently configured. If tests are added:
 ```bash
