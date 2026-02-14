@@ -7,7 +7,7 @@ namespace HomeAssistantApps;
 public class KidsWakeup
 {
 
-    public KidsWakeup(ILogger<KidsWakeup> logger, Entities entities)
+    public KidsWakeup(ILogger<KidsWakeup> logger, IHaContext ha, Entities entities, Notify notify)
     {
         var config = new List<KidsWakeupConfig>
         {
@@ -53,8 +53,16 @@ public class KidsWakeup
                         cfg.LinkedMediaPlayer.MediaStop();
                         mediaPlayerSubscription?.Dispose();
                         cfg.LinkedMediaPlayer.VolumeSet(0.2);
+                        notify.All("clear_notification", tag: cfg.Entity.EntityId);
                         return;
                     }
+                    var actionId = $"TURN_OFF_{cfg.Entity.EntityId}";
+                    notify.All(
+                        $"{e.Entity.Attributes?.FriendlyName} is on",
+                        tag: cfg.Entity.EntityId,
+                        actions: [new NotifyAction(actionId, "Turn Off")]
+                    );
+
                     cfg.LinkedBedtime.TurnOff();
                     cfg.LinkedMediaPlayer.VolumeSet(0.5);
                     
@@ -89,6 +97,14 @@ public class KidsWakeup
                             }
                         });
                 });
+
+            // Listen for "Turn Off" action from the notification
+            var turnOffActionId = $"TURN_OFF_{cfg.Entity.EntityId}";
+            Notify.OnAction(ha, turnOffActionId, () =>
+            {
+                logger.LogInformation("Turning off {Entity} via notification action", cfg.Entity.EntityId);
+                cfg.Entity!.TurnOff();
+            });
         }
     }
 }

@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Runtime.CompilerServices;
 using System.IO;
+using System.Text.Json.Serialization;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.DependencyInjection;
@@ -75,6 +76,13 @@ public class Notify(IServiceProvider serviceProvider, ILogger<Notify> logger)
         }
     }
 
+    public static IDisposable OnAction(IHaContext ha, string actionId, Action callback)
+    {
+        return ha.Events.Filter<MobileAppNotificationActionData>("mobile_app_notification_action")
+            .Where(e => e.Data?.Action == actionId)
+            .Subscribe(_ => callback());
+    }
+
     private static Dictionary<string, object>? BuildDataObject(string? tag, NotifyAction[]? actions, bool noAction)
     {
         var dict = new Dictionary<string, object>();
@@ -101,4 +109,9 @@ public class Notify(IServiceProvider serviceProvider, ILogger<Notify> logger)
 
         return dict.Count > 0 ? dict : null;
     }
+}
+
+public record MobileAppNotificationActionData
+{
+    [JsonPropertyName("action")] public string? Action { get; init; }
 }
