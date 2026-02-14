@@ -1,6 +1,9 @@
 using System.Linq;
 using System.Runtime.CompilerServices;
 using System.IO;
+using System.Threading.Tasks;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace HomeAssistantApps.modules;
 
@@ -14,41 +17,63 @@ public record NotifyAction(
     string? TextInputPlaceholder = null
 );
 
-public class Notify(IHaContext haContext)
+public class Notify(IServiceProvider serviceProvider, ILogger<Notify> logger)
 {
-    private readonly Services _services = new(haContext);
-
     public void Alex(string message, string? title = null, string? tag = null,
         NotifyAction[]? actions = null, [CallerFilePath] string? callerPath = null)
     {
         var actualTag = tag ?? Path.GetFileNameWithoutExtension(callerPath);
-        var data = BuildDataObject(actualTag, actions);
-        if (data == null)
-            _services.Notify.MobileAppCph2655(message, title);
-        else
-            _services.Notify.MobileAppCph2655(message, title, data: data);
+        _ = SendAsync("mobile_app_cph2655", message, title, actualTag, actions);
     }
 
     public void Julie(string message, string? title = null, string? tag = null,
         NotifyAction[]? actions = null, [CallerFilePath] string? callerPath = null)
     {
         var actualTag = tag ?? Path.GetFileNameWithoutExtension(callerPath);
-        var data = BuildDataObject(actualTag, actions);
-        if (data == null)
-            _services.Notify.MobileAppPixel8Pro(message, title);
-        else
-            _services.Notify.MobileAppPixel8Pro(message, title, data: data);
+        _ = SendAsync("mobile_app_pixel_8_pro", message, title, actualTag, actions);
     }
 
     public void All(string message, string? title = null, string? tag = null,
         NotifyAction[]? actions = null, [CallerFilePath] string? callerPath = null)
     {
         var actualTag = tag ?? Path.GetFileNameWithoutExtension(callerPath);
-        var data = BuildDataObject(actualTag, actions);
-        if (data == null)
-            _services.Notify.All(message, title);
-        else
-            _services.Notify.All(message, title, data: data);
+        _ = SendAsync("all", message, title, actualTag, actions);
+    }
+
+    private async Task SendAsync(string target, string message, string? title, string? tag, NotifyAction[]? actions)
+    {
+        try
+        {
+            await using var scope = serviceProvider.CreateAsyncScope();
+            var services = new Services(scope.ServiceProvider.GetRequiredService<IHaContext>());
+            var data = BuildDataObject(tag, actions);
+            
+            switch (target)
+            {
+                case "mobile_app_cph2655":
+                    if (data == null)
+                        services.Notify.MobileAppCph2655(message, title);
+                    else
+                        services.Notify.MobileAppCph2655(message, title, data: data);
+                    break;
+                case "mobile_app_pixel_8_pro":
+                    if (data == null)
+                        services.Notify.MobileAppPixel8Pro(message, title);
+                    else
+                        services.Notify.MobileAppPixel8Pro(message, title, data: data);
+                    break;
+                default:
+                    if (data == null)
+                        services.Notify.All(message, title);
+                    else
+                        services.Notify.All(message, title, data: data);
+                    break;
+            }
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Failed to send notification to {Target}", target);
+        }
     }
 
     private static object? BuildDataObject(string? tag, NotifyAction[]? actions)
