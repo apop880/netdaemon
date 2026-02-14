@@ -20,33 +20,33 @@ public record NotifyAction(
 public class Notify(IServiceProvider serviceProvider, ILogger<Notify> logger)
 {
     public void Alex(string message, string? title = null, string? tag = null,
-        NotifyAction[]? actions = null, [CallerFilePath] string? callerPath = null)
+        NotifyAction[]? actions = null, bool noAction = true, [CallerFilePath] string? callerPath = null)
     {
         var actualTag = tag ?? Path.GetFileNameWithoutExtension(callerPath);
-        _ = SendAsync("mobile_app_cph2655", message, title, actualTag, actions);
+        _ = SendAsync("mobile_app_cph2655", message, title, actualTag, actions, noAction);
     }
 
     public void Julie(string message, string? title = null, string? tag = null,
-        NotifyAction[]? actions = null, [CallerFilePath] string? callerPath = null)
+        NotifyAction[]? actions = null, bool noAction = true, [CallerFilePath] string? callerPath = null)
     {
         var actualTag = tag ?? Path.GetFileNameWithoutExtension(callerPath);
-        _ = SendAsync("mobile_app_pixel_8_pro", message, title, actualTag, actions);
+        _ = SendAsync("mobile_app_pixel_8_pro", message, title, actualTag, actions, noAction);
     }
 
     public void All(string message, string? title = null, string? tag = null,
-        NotifyAction[]? actions = null, [CallerFilePath] string? callerPath = null)
+        NotifyAction[]? actions = null, bool noAction = true, [CallerFilePath] string? callerPath = null)
     {
         var actualTag = tag ?? Path.GetFileNameWithoutExtension(callerPath);
-        _ = SendAsync("all", message, title, actualTag, actions);
+        _ = SendAsync("all", message, title, actualTag, actions, noAction);
     }
 
-    private async Task SendAsync(string target, string message, string? title, string? tag, NotifyAction[]? actions)
+    private async Task SendAsync(string target, string message, string? title, string? tag, NotifyAction[]? actions, bool noAction)
     {
         try
         {
             await using var scope = serviceProvider.CreateAsyncScope();
             var services = new Services(scope.ServiceProvider.GetRequiredService<IHaContext>());
-            var data = BuildDataObject(tag, actions);
+            var data = BuildDataObject(tag, actions, noAction);
             
             switch (target)
             {
@@ -76,14 +76,17 @@ public class Notify(IServiceProvider serviceProvider, ILogger<Notify> logger)
         }
     }
 
-    private static object? BuildDataObject(string? tag, NotifyAction[]? actions)
+    private static object? BuildDataObject(string? tag, NotifyAction[]? actions, bool noAction)
     {
-        if (string.IsNullOrEmpty(tag) && (actions == null || actions.Length == 0))
+        var hasTag = !string.IsNullOrEmpty(tag);
+        var hasActions = actions != null && actions.Length > 0;
+
+        if (!hasTag && !hasActions && !noAction)
             return null;
 
-        if (actions != null && actions.Length > 0)
+        if (hasActions)
         {
-            var actionsData = actions.Select(a => new
+            var actionsData = actions!.Select(a => new
             {
                 action = a.Action,
                 title = a.Title,
@@ -94,11 +97,21 @@ public class Notify(IServiceProvider serviceProvider, ILogger<Notify> logger)
                 textInputPlaceholder = a.TextInputPlaceholder
             }).ToArray();
 
-            if (string.IsNullOrEmpty(tag))
+            if (!hasTag && noAction)
+                return new { clickAction = "noAction", actions = actionsData };
+            if (!hasTag)
                 return new { actions = actionsData };
+            if (noAction)
+                return new { tag, clickAction = "noAction", actions = actionsData };
             return new { tag, actions = actionsData };
         }
 
-        return new { tag };
+        if (noAction && hasTag)
+            return new { tag, clickAction = "noAction" };
+        if (noAction)
+            return new { clickAction = "noAction" };
+        if (hasTag)
+            return new { tag };
+        return null;
     }
 }
