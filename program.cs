@@ -27,6 +27,7 @@ try
                 .AddHomeAssistantGenerated()
                 .AddHttpClient()
                 .AddSingleton<Telegram>()
+                .AddScoped<Notify>()
                 .AddSingleton<Server>()
                 .AddTransient<Unifi>()
                 .AddTransient<Proxmox>();

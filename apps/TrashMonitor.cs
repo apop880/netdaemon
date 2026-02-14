@@ -16,12 +16,12 @@ namespace HomeAssistantApps
     {
         private readonly IScheduler _scheduler;
         private readonly TrashMonitorConfig _config;
-        private readonly Telegram _telegram;
+        private readonly Notify _notify;
 
-        public TrashMonitor(IScheduler scheduler, Entities entities, Telegram telegram)
+        public TrashMonitor(IScheduler scheduler, Entities entities, Notify notify)
         {
             _scheduler = scheduler;
-            _telegram = telegram;
+            _notify = notify;
             _config = new TrashMonitorConfig
             {
                 InputTextEntity = entities.InputText.TrashStatus,
@@ -41,7 +41,7 @@ namespace HomeAssistantApps
             // If status is not empty/unknown, the user hasn't cleared it yet
             if (!string.IsNullOrEmpty(currentStatus) && !currentStatus.Equals("unknown", StringComparison.CurrentCultureIgnoreCase))
             {
-                _telegram.All($"Reminder: Take out {currentStatus}!");
+                _notify.All($"Reminder: Take out {currentStatus}!");
                 return;
             }
             // If on vacation mode or notify only, skip
