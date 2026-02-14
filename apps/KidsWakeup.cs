@@ -12,7 +12,7 @@ public class KidsWakeup
         var config = new List<KidsWakeupConfig>
         {
             new() {
-                Entity = entities.InputButton.MorganWakeup,
+                Entity = entities.InputBoolean.MorganWakeup,
                 LinkedBedtime = entities.InputBoolean.MorganBed,
                 LinkedMediaPlayer = entities.MediaPlayer.MorgansRoomSpeaker,
                 AudioFiles =
@@ -22,7 +22,7 @@ public class KidsWakeup
                 ]
             },
             new() {
-                Entity = entities.InputButton.MarcyWakeup,
+                Entity = entities.InputBoolean.MarcyWakeup,
                 LinkedBedtime = entities.InputBoolean.MarcyBed,
                 LinkedMediaPlayer = entities.MediaPlayer.MarcysRoomSpeaker,
                 AudioFiles =
@@ -41,10 +41,20 @@ public class KidsWakeup
                 continue;
             }
 
+            // Listen for media player state changes to play next file
+            IDisposable? mediaPlayerSubscription = null;
+
             cfg.Entity
-                .StateChanges()
-                .SubscribeAsync(async _ =>
+                .StateChanges()    
+                .SubscribeAsync(async e =>
                 {
+                    if (e.New?.State != "on")
+                    {
+                        cfg.LinkedMediaPlayer.MediaStop();
+                        mediaPlayerSubscription?.Dispose();
+                        cfg.LinkedMediaPlayer.VolumeSet(0.2);
+                        return;
+                    }
                     cfg.LinkedBedtime.TurnOff();
                     cfg.LinkedMediaPlayer.VolumeSet(0.5);
                     
@@ -57,8 +67,6 @@ public class KidsWakeup
                         media_content_id = cfg.AudioFiles[currentFileIndex]
                     });
 
-                    // Listen for media player state changes to play next file (only during this wakeup)
-                    IDisposable? mediaPlayerSubscription = null;
                     mediaPlayerSubscription = cfg.LinkedMediaPlayer.StateChanges()
                         // Only advance when playback actually went to "idle" (end of track)
                         .Where(state => state.Old?.State == "playing" && state.New?.State == "idle")
@@ -77,6 +85,7 @@ public class KidsWakeup
                             {
                                 cfg.LinkedMediaPlayer.VolumeSet(0.2);
                                 mediaPlayerSubscription?.Dispose();
+                                cfg.Entity.TurnOff();
                             }
                         });
                 });
@@ -86,7 +95,7 @@ public class KidsWakeup
 
 public class KidsWakeupConfig
 {
-    public InputButtonEntity? Entity { get; set; }
+    public InputBooleanEntity? Entity { get; set; }
     public MediaPlayerEntity? LinkedMediaPlayer { get; set; }
     public InputBooleanEntity? LinkedBedtime { get; set; }
     public required List<string> AudioFiles { get; set; }
