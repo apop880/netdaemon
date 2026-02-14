@@ -16,20 +16,20 @@ public class Proxmox
     private readonly ILogger<Proxmox> _logger;
     private readonly IHttpClientFactory _httpClientFactory;
     private readonly ProxmoxConfig? _proxmoxConfig;
-    private readonly Telegram _telegram;
+    private readonly Notify _notify;
     private bool _isProxmoxConfigValid = true;
 
-    public Proxmox(ILogger<Proxmox> logger, IConfiguration configuration, IHttpClientFactory httpClientFactory, Telegram telegram)
+    public Proxmox(ILogger<Proxmox> logger, IConfiguration configuration, IHttpClientFactory httpClientFactory, Notify notify)
     {
         _logger = logger;
         _httpClientFactory = httpClientFactory;
-        _telegram = telegram;
+        _notify = notify;
         _proxmoxConfig = configuration.GetSection("Proxmox").Get<ProxmoxConfig>();
 
         if (_proxmoxConfig is null)
         {
             _logger.LogError("Proxmox configuration not found.");
-            _telegram.System("Error: Proxmox configuration not found. UPS functionality disabled.");
+            _notify.Alex("Error: Proxmox configuration not found. UPS functionality disabled.");
             _isProxmoxConfigValid = false;
         }
         else
@@ -37,19 +37,19 @@ public class Proxmox
             if (string.IsNullOrEmpty(_proxmoxConfig.Token))
             {
                 _logger.LogError("Proxmox access token not found in configuration.");
-                _telegram.System("Error: Proxmox access token not found. UPS functionality disabled.");
+                _notify.Alex("Error: Proxmox access token not found. UPS functionality disabled.");
                 _isProxmoxConfigValid = false;
             }
             if (string.IsNullOrEmpty(_proxmoxConfig.BaseUrl))
             {
                 _logger.LogError("Proxmox base URL not found in configuration.");
-                _telegram.System("Error: Proxmox base URL not found. UPS functionality disabled.");
+                _notify.Alex("Error: Proxmox base URL not found. UPS functionality disabled.");
                 _isProxmoxConfigValid = false;
             }
             if (string.IsNullOrEmpty(_proxmoxConfig.Node))
             {
                 _logger.LogError("Proxmox node not found in configuration.");
-                _telegram.System("Error: Proxmox node not found. UPS functionality disabled.");
+                _notify.Alex("Error: Proxmox node not found. UPS functionality disabled.");
                 _isProxmoxConfigValid = false;
             }
         }
@@ -60,7 +60,7 @@ public class Proxmox
         if (!_isProxmoxConfigValid)
         {
             _logger.LogError("Proxmox configuration is invalid. Cannot proceed with shutdown.");
-            _telegram.System("Error: Proxmox configuration is invalid. Cannot proceed with shutdown.");
+            _notify.Alex("Error: Proxmox configuration is invalid. Cannot proceed with shutdown.");
             return;
         }
 
@@ -77,12 +77,12 @@ public class Proxmox
             var response = await httpClient.PostAsync($"{_proxmoxConfig.BaseUrl}/api2/json/nodes/{_proxmoxConfig.Node}/status", content);
             response.EnsureSuccessStatusCode();
             _logger.LogInformation("Proxmox shutdown request sent successfully.");
-            _telegram.All("Proxmox shutdown request sent successfully.");
+            _notify.All("Proxmox shutdown request sent successfully.");
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Failed to send shutdown request to Proxmox.");
-            _telegram.Alex("Error: Failed to send shutdown request to the Proxmox server.");
+            _notify.Alex("Error: Failed to send shutdown request to the Proxmox server.");
         }
     }
 }

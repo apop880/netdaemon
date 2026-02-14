@@ -15,16 +15,16 @@ public class OutsideLightsApp
     private readonly Entities _entities;
     private readonly OutsideLightsConfig _config;
     private readonly IScheduler _scheduler;
-    private readonly Telegram _telegram;
+    private readonly Notify _notify;
     private readonly IPeriodTimeline lightOnPeriod;
 
 
-    public OutsideLightsApp(ILogger<OutsideLightsApp> logger, IScheduler scheduler, Entities entities, Telegram telegram)
+    public OutsideLightsApp(ILogger<OutsideLightsApp> logger, IScheduler scheduler, Entities entities, Notify notify)
     {
         _logger = logger;
         _entities = entities;
         _scheduler = scheduler;
-        _telegram = telegram;
+        _notify = notify;
         _config = new OutsideLightsConfig
         {
             {
@@ -181,7 +181,7 @@ public class OutsideLightsApp
                 if (checkAttempts == 5)
                 {
                     _logger.LogWarning("Light on check has failed 5 times.");
-                    _telegram.System("Light on check has failed 5 times. There may be an issue.");
+                    _notify.Alex("Light on check has failed 5 times. There may be an issue.");
                 }
                 _entities.Light.Garage.TurnOn(brightnessPct: 80, colorTempKelvin: 2700);
                 _entities.Light.WledDeck.TurnOn();
@@ -218,7 +218,7 @@ public class OutsideLightsApp
                 if (checkAttempts == 5)
                 {
                     _logger.LogWarning("Light off check has failed 5 times.");
-                    _telegram.System("Light off check has failed 5 times. There may be an issue.");
+                    _notify.Alex("Light off check has failed 5 times. There may be an issue.");
                 }
                 _entities.Light.Garage.TurnOff();
                 _entities.Light.WledDeck.TurnOff();
