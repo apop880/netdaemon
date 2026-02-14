@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using System.Linq;
 using System.Runtime.CompilerServices;
 using System.IO;
@@ -21,23 +22,21 @@ public class Notify(IServiceProvider serviceProvider, ILogger<Notify> logger)
 {
     public void Alex(string message, string? title = null, string? tag = null,
         NotifyAction[]? actions = null, bool noAction = true, [CallerFilePath] string? callerPath = null)
-    {
-        var actualTag = tag ?? Path.GetFileNameWithoutExtension(callerPath);
-        _ = SendAsync("mobile_app_cph2655", message, title, actualTag, actions, noAction);
-    }
+        => Send("mobile_app_cph2655", message, title, tag, actions, noAction, callerPath);
 
     public void Julie(string message, string? title = null, string? tag = null,
         NotifyAction[]? actions = null, bool noAction = true, [CallerFilePath] string? callerPath = null)
-    {
-        var actualTag = tag ?? Path.GetFileNameWithoutExtension(callerPath);
-        _ = SendAsync("mobile_app_pixel_8_pro", message, title, actualTag, actions, noAction);
-    }
+        => Send("mobile_app_pixel_8_pro", message, title, tag, actions, noAction, callerPath);
 
     public void All(string message, string? title = null, string? tag = null,
         NotifyAction[]? actions = null, bool noAction = true, [CallerFilePath] string? callerPath = null)
+        => Send("all", message, title, tag, actions, noAction, callerPath);
+
+    private void Send(string target, string message, string? title, string? tag,
+        NotifyAction[]? actions, bool noAction, string? callerPath)
     {
         var actualTag = tag ?? Path.GetFileNameWithoutExtension(callerPath);
-        _ = SendAsync("all", message, title, actualTag, actions, noAction);
+        _ = SendAsync(target, message, title, actualTag, actions, noAction);
     }
 
     private async Task SendAsync(string target, string message, string? title, string? tag, NotifyAction[]? actions, bool noAction)
@@ -76,17 +75,19 @@ public class Notify(IServiceProvider serviceProvider, ILogger<Notify> logger)
         }
     }
 
-    private static object? BuildDataObject(string? tag, NotifyAction[]? actions, bool noAction)
+    private static Dictionary<string, object>? BuildDataObject(string? tag, NotifyAction[]? actions, bool noAction)
     {
-        var hasTag = !string.IsNullOrEmpty(tag);
-        var hasActions = actions != null && actions.Length > 0;
+        var dict = new Dictionary<string, object>();
 
-        if (!hasTag && !hasActions && !noAction)
-            return null;
+        if (!string.IsNullOrEmpty(tag))
+            dict["tag"] = tag;
 
-        if (hasActions)
+        if (noAction)
+            dict["clickAction"] = "noAction";
+
+        if (actions is { Length: > 0 })
         {
-            var actionsData = actions!.Select(a => new
+            dict["actions"] = actions.Select(a => new
             {
                 action = a.Action,
                 title = a.Title,
@@ -96,22 +97,8 @@ public class Notify(IServiceProvider serviceProvider, ILogger<Notify> logger)
                 textInputButtonTitle = a.TextInputButtonTitle,
                 textInputPlaceholder = a.TextInputPlaceholder
             }).ToArray();
-
-            if (!hasTag && noAction)
-                return new { clickAction = "noAction", actions = actionsData };
-            if (!hasTag)
-                return new { actions = actionsData };
-            if (noAction)
-                return new { tag, clickAction = "noAction", actions = actionsData };
-            return new { tag, actions = actionsData };
         }
 
-        if (noAction && hasTag)
-            return new { tag, clickAction = "noAction" };
-        if (noAction)
-            return new { clickAction = "noAction" };
-        if (hasTag)
-            return new { tag };
-        return null;
+        return dict.Count > 0 ? dict : null;
     }
 }
