@@ -2,10 +2,6 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Runtime.CompilerServices;
 using System.IO;
-using System.Text.Json.Serialization;
-using System.Threading.Tasks;
-using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.DependencyInjection;
 
 namespace HomeAssistantApps.modules;
 
@@ -19,7 +15,7 @@ public record NotifyAction(
     string? TextInputPlaceholder = null
 );
 
-public class Notify(IServiceProvider serviceProvider, ILogger<Notify> logger)
+public class Notify(ILogger<Notify> logger, Services services)
 {
     public void Alex(string message, string? title = null, string? tag = null,
         NotifyAction[]? actions = null, bool noAction = true, [CallerFilePath] string? callerPath = null)
@@ -36,16 +32,9 @@ public class Notify(IServiceProvider serviceProvider, ILogger<Notify> logger)
     private void Send(string target, string message, string? title, string? tag,
         NotifyAction[]? actions, bool noAction, string? callerPath)
     {
-        var actualTag = tag ?? Path.GetFileNameWithoutExtension(callerPath);
-        _ = SendAsync(target, message, title, actualTag, actions, noAction);
-    }
-
-    private async Task SendAsync(string target, string message, string? title, string? tag, NotifyAction[]? actions, bool noAction)
-    {
+        tag ??= Path.GetFileNameWithoutExtension(callerPath);
         try
         {
-            await using var scope = serviceProvider.CreateAsyncScope();
-            var services = new Services(scope.ServiceProvider.GetRequiredService<IHaContext>());
             var data = BuildDataObject(tag, actions, noAction);
             
             switch (target)
