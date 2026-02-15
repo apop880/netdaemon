@@ -28,6 +28,7 @@ try
                 .AddHttpClient()
                 .AddSingleton<Telegram>()
                 .AddSingleton<Notify>()
+                .AddScoped<HomeMode>()
                 .AddSingleton<Server>()
                 .AddTransient<Unifi>()
                 .AddTransient<Proxmox>();
