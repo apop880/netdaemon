@@ -33,7 +33,7 @@ public class HomeMode
             .DistinctUntilChanged()
             .Subscribe(_subject);
 
-        Current = _subject.DistinctUntilChanged();
+        Current = _subject.DistinctUntilChanged().Skip(1);
     }
 
     private static HomeModeState Evaluate(Entities entities)

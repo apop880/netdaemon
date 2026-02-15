@@ -53,7 +53,6 @@ public class Presence
 
         // Logic for tracking if anyone is home based on zone state/vacation mode/guest mode
         homeMode.Current
-            .Skip(1)
             .Subscribe(mode =>
             {
                 notify.All($"Mode set to {mode.ToString().ToLowerInvariant()}");
