@@ -10,7 +10,7 @@ using System.Reactive.Subjects;
 namespace HomeAssistantApps;
 
 [NetDaemonApp]
-public class InsideLights
+public class Circadian
 {
     private readonly BehaviorSubject<int?> _colorTempSubject;
     protected int? ColorTemp
@@ -21,7 +21,7 @@ public class InsideLights
     private const int daytimeColorTemp = 5500;
     private const int nighttimeColorTemp = 2700;
 
-    public InsideLights(ILogger<InsideLights> logger, IScheduler scheduler, LightEntities entities, ZoneEntities zoneEntities)
+    public Circadian(ILogger<Circadian> logger, IScheduler scheduler, LightEntities entities, ZoneEntities zoneEntities)
     {
         List<LightEntity> lights = [
             entities.AlexLamp,
