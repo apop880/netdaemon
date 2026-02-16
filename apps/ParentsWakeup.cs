@@ -48,9 +48,10 @@ public class ParentsWakeup
                             logger.LogInformation("Turning on {Name}'s lamp and turning off bedtime mode", cfg.AlarmSensor.EntityId);
                             foreach (var (bed, light) in cfg.BooleanLightPairs.Where(pair => pair.Item1.State == "on"))
                             {
-                                light.TurnOn();
+                                light?.TurnOn();
                                 bed.TurnOff();
                             }
+                            entities.InputBoolean.NightMode.TurnOff();
                         });
                     }
                 });
@@ -62,6 +63,7 @@ public class ParentsWakeup
                     logger.LogInformation("Fail-safe: Turning off {Bed} at 10:00 AM", bed.EntityId);
                     bed.TurnOff();
                 }
+                entities.InputBoolean.NightMode.TurnOff();
             });
         }
     }
@@ -70,6 +72,6 @@ public class ParentsWakeup
 public class ParentsWakeupConfig
 {
     public required SensorEntity AlarmSensor { get; set; }
-    public required List<(InputBooleanEntity, LightEntity)> BooleanLightPairs { get; set; }
+    public required List<(InputBooleanEntity, LightEntity?)> BooleanLightPairs { get; set; }
     public IDisposable? Timer { get; set; }
 }
