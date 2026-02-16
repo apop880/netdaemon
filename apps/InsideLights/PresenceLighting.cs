@@ -12,6 +12,15 @@ public class PresenceLighting
                 logger.LogInformation("HomeMode changed to Away, turning off InsideLights");
                 entities.Light.InsideLights.TurnOff();
             });
+        homeMode.Current
+            .Where(mode => mode == HomeModeState.Home)
+            .Subscribe(_ =>
+            {
+                if (entities.Light.KitchenSink.IsOn())
+                {
+                    entities.Light.KitchenSink.TurnOn(brightnessPct: 80);
+                }
+            });
         entities.Sensor.ThirdRealityInc3rsnl02043zIlluminance.StateChanges()
             .Where(s => s.New?.State < 10)
             .Subscribe(_ =>
