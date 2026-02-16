@@ -40,22 +40,13 @@ public class Notify(ILogger<Notify> logger, Services services)
             switch (target)
             {
                 case "mobile_app_cph2655":
-                    if (data == null)
-                        services.Notify.MobileAppCph2655(message, title);
-                    else
-                        services.Notify.MobileAppCph2655(message, title, data: data);
+                    services.Notify.MobileAppCph2655(message, title, data: data);
                     break;
                 case "mobile_app_pixel_8_pro":
-                    if (data == null)
-                        services.Notify.MobileAppPixel8Pro(message, title);
-                    else
-                        services.Notify.MobileAppPixel8Pro(message, title, data: data);
+                    services.Notify.MobileAppPixel8Pro(message, title, data: data);
                     break;
                 default:
-                    if (data == null)
-                        services.Notify.All(message, title);
-                    else
-                        services.Notify.All(message, title, data: data);
+                    services.Notify.All(message, title, data: data);
                     break;
             }
         }
@@ -72,9 +63,13 @@ public class Notify(ILogger<Notify> logger, Services services)
             .Subscribe(_ => callback());
     }
 
-    private static Dictionary<string, object>? BuildDataObject(string? tag, NotifyAction[]? actions, bool noAction)
+    private static Dictionary<string, object> BuildDataObject(string? tag, NotifyAction[]? actions, bool noAction)
     {
-        var dict = new Dictionary<string, object>();
+        var dict = new Dictionary<string, object>
+        {
+            ["ttl"] = 0,
+            ["priority"] = "high"
+        };
 
         if (!string.IsNullOrEmpty(tag))
             dict["tag"] = tag;
@@ -96,7 +91,7 @@ public class Notify(ILogger<Notify> logger, Services services)
             }).ToArray();
         }
 
-        return dict.Count > 0 ? dict : null;
+        return dict;
     }
 }
 
