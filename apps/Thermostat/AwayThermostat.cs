@@ -3,7 +3,7 @@ namespace HomeAssistantApps;
 [NetDaemonApp]
 public class AwayThermostat
 {
-    private const double MaxDistanceMiles = 75;
+    private const double MaxDistanceMiles = 30;
 
     private readonly ILogger<AwayThermostat> _logger;
     private readonly HomeMode _homeMode;
