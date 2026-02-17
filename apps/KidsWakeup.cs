@@ -53,7 +53,7 @@ public class KidsWakeup
                         cfg.LinkedMediaPlayer.MediaStop();
                         mediaPlayerSubscription?.Dispose();
                         cfg.LinkedMediaPlayer.VolumeSet(0.2);
-                        notify.All("clear_notification", tag: cfg.Entity.EntityId);
+                        notify.Clear(cfg.Entity.EntityId);
                         return;
                     }
                     var actionId = $"TURN_OFF_{cfg.Entity.EntityId}";

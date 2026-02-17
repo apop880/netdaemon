@@ -29,6 +29,12 @@ public class Notify(ILogger<Notify> logger, Services services)
         NotifyAction[]? actions = null, bool noAction = true, [CallerFilePath] string? callerPath = null)
         => Send("all", message, title, tag, actions, noAction, callerPath);
 
+    public void Clear(string? tag = null, [CallerFilePath] string? callerPath = null)
+    {
+        tag ??= Path.GetFileNameWithoutExtension(callerPath);
+        All("clear_notification", tag: tag);
+    }
+
     private void Send(string target, string message, string? title, string? tag,
         NotifyAction[]? actions, bool noAction, string? callerPath)
     {
