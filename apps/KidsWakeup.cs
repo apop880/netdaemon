@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading.Tasks;
 
 namespace HomeAssistantApps;
@@ -18,7 +19,8 @@ public class KidsWakeup
                 AudioFiles =
                 [
                     "http://192.168.1.7:8754/LionKing.mp3",
-                    "http://192.168.1.7:8754/can_you_feel_the_love_tonight.mp3"
+                    "http://192.168.1.7:8754/can_you_feel_the_love_tonight.mp3",
+                    "http://192.168.1.7:8754/EverythingIsAwesome.mp3"
                 ]
             },
             new() {
@@ -28,7 +30,8 @@ public class KidsWakeup
                 AudioFiles =
                 [
                     "http://192.168.1.7:8754/LionKing.mp3",
-                    "http://192.168.1.7:8754/DannyGoWakeUp.mp3"
+                    "http://192.168.1.7:8754/SmallWorld.mp3",
+                    "http://192.168.1.7:8754/Figment.mp3"
                 ]
             }
         };
@@ -65,6 +68,18 @@ public class KidsWakeup
 
                     cfg.LinkedBedtime.TurnOff();
                     cfg.LinkedMediaPlayer.VolumeSet(0.5);
+
+                    var selectedAudioFiles = cfg.AudioFiles
+                        .OrderBy(_ => Random.Shared.Next())
+                        .Take(2)
+                        .ToList();
+
+                    if (selectedAudioFiles.Count == 0)
+                    {
+                        logger.LogWarning("No audio files configured for {Entity}", cfg.Entity.EntityId);
+                        cfg.Entity.TurnOff();
+                        return;
+                    }
                     
                     await Task.Delay(3000);
                     
@@ -72,7 +87,7 @@ public class KidsWakeup
                     int currentFileIndex = 0;
                     cfg.LinkedMediaPlayer.PlayMedia(new {
                         media_content_type = "music",
-                        media_content_id = cfg.AudioFiles[currentFileIndex]
+                        media_content_id = selectedAudioFiles[currentFileIndex]
                     });
 
                     mediaPlayerSubscription = cfg.LinkedMediaPlayer.StateChanges()
@@ -82,11 +97,11 @@ public class KidsWakeup
                         {
                             currentFileIndex++;
                             
-                            if (currentFileIndex < cfg.AudioFiles.Count)
+                            if (currentFileIndex < selectedAudioFiles.Count)
                             {
                                 cfg.LinkedMediaPlayer.PlayMedia(new {
                                     media_content_type = "music",
-                                    media_content_id = cfg.AudioFiles[currentFileIndex]
+                                    media_content_id = selectedAudioFiles[currentFileIndex]
                                 });
                             }
                             else
