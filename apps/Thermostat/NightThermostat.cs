@@ -81,6 +81,12 @@ public class NightThermostat
                 ScheduleRecovery();
             });
 
+        if (_entities.InputBoolean.NightMode.IsOn() && _entities.InputBoolean.VacationMode.IsOff())
+        {
+            _logger.LogInformation("NightMode: Night mode already on at startup — scheduling recovery");
+            ScheduleRecovery();
+        }
+
         _logger.LogInformation("NightMode: Service is ready");
     }
 
@@ -131,7 +137,7 @@ public class NightThermostat
         var now = _scheduler.Now.LocalDateTime;
 
         _logger.LogInformation(
-            "NightMode: Target alarm time is {Alarm:HH:mm}, lead time is {Lead:F0} min, recovery at {Recovery:HH:mm}",
+            "NightMode: Target alarm time is {Alarm:yyyy-MM-dd HH:mm}, lead time is {Lead:F0} min, recovery at {Recovery:yyyy-MM-dd HH:mm}",
             alarmTime, leadTimeMinutes, recoveryTime);
 
         if (recoveryTime <= now)
@@ -163,41 +169,41 @@ public class NightThermostat
     private DateTime GetEarliestAlarmTime()
     {
         var now = _scheduler.Now.LocalDateTime;
-        var tomorrow9am = now.Date.AddDays(1).AddHours(9);
+        var today9am = now.Date.AddHours(9);
 
         DateTime? julieAlarm = null;
         DateTime? alexAlarm = null;
 
-        if (DateTime.TryParse(_julieAlarm.State, out var jTime) && jTime > now && jTime < tomorrow9am)
+        if (DateTime.TryParse(_julieAlarm.State, out var jTime) && jTime > now && jTime <= today9am)
             julieAlarm = jTime;
 
-        if (DateTime.TryParse(_alexAlarm.State, out var aTime) && aTime > now && aTime < tomorrow9am)
+        if (DateTime.TryParse(_alexAlarm.State, out var aTime) && aTime > now && aTime <= today9am)
             alexAlarm = aTime;
 
         if (julieAlarm.HasValue && alexAlarm.HasValue)
         {
             var earliest = julieAlarm.Value < alexAlarm.Value ? julieAlarm.Value : alexAlarm.Value;
-            _logger.LogInformation("NightMode: Using earliest alarm at {Time:HH:mm}", earliest);
+            _logger.LogInformation("NightMode: Using earliest alarm at {Time:yyyy-MM-dd HH:mm}", earliest);
             return earliest;
         }
 
         if (julieAlarm.HasValue)
         {
-            _logger.LogInformation("NightMode: Using Julie's alarm at {Time:HH:mm}", julieAlarm.Value);
+            _logger.LogInformation("NightMode: Using Julie's alarm at {Time:yyyy-MM-dd HH:mm}", julieAlarm.Value);
             return julieAlarm.Value;
         }
 
         if (alexAlarm.HasValue)
         {
-            _logger.LogInformation("NightMode: Using Alex's alarm at {Time:HH:mm}", alexAlarm.Value);
+            _logger.LogInformation("NightMode: Using Alex's alarm at {Time:yyyy-MM-dd HH:mm}", alexAlarm.Value);
             return alexAlarm.Value;
         }
 
         var fallback = now.Date.AddHours(FallbackRecoveryHour);
         if (fallback <= now)
-            fallback = fallback.AddDays(1);
+            fallback = now;
 
-        _logger.LogInformation("NightMode: No valid alarms found — using fallback recovery at {Time:HH:mm}", fallback);
+        _logger.LogInformation("NightMode: No valid alarms found — using fallback recovery at {Time:yyyy-MM-dd HH:mm}", fallback);
         return fallback;
     }
 
