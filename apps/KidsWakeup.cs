@@ -156,6 +156,8 @@ public class KidsWakeup
                 PropertyNameCaseInsensitive = true
             });
 
+            logger.LogInformation("Loaded audio config: {AudioConfig}", audioConfig);
+
             return audioConfig ?? [];
         }
         catch (Exception ex)
