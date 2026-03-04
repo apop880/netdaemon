@@ -1,6 +1,9 @@
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
+using System.Text.Json;
 using System.Threading.Tasks;
+using Microsoft.Extensions.Hosting;
 
 namespace HomeAssistantApps;
 
@@ -8,31 +11,23 @@ namespace HomeAssistantApps;
 public class KidsWakeup
 {
 
-    public KidsWakeup(ILogger<KidsWakeup> logger, IHaContext ha, Entities entities, Notify notify)
+    public KidsWakeup(ILogger<KidsWakeup> logger, IHaContext ha, Entities entities, Notify notify, IConfiguration configuration, IHostEnvironment environment)
     {
+        var audioConfigByKey = LoadAudioConfig(logger, configuration, environment);
+
         var config = new List<KidsWakeupConfig>
         {
             new() {
                 Entity = entities.InputBoolean.MorganWakeup,
                 LinkedBedtime = entities.InputBoolean.MorganBed,
                 LinkedMediaPlayer = entities.MediaPlayer.MorgansRoomSpeaker,
-                AudioFiles =
-                [
-                    "http://192.168.1.7:8754/LionKing.mp3",
-                    "http://192.168.1.7:8754/can_you_feel_the_love_tonight.mp3",
-                    "http://192.168.1.7:8754/EverythingIsAwesome.mp3"
-                ]
+                AudioConfig = GetAudioConfig(audioConfigByKey, "MorganWakeup", logger)
             },
             new() {
                 Entity = entities.InputBoolean.MarcyWakeup,
                 LinkedBedtime = entities.InputBoolean.MarcyBed,
                 LinkedMediaPlayer = entities.MediaPlayer.MarcysRoomSpeaker,
-                AudioFiles =
-                [
-                    "http://192.168.1.7:8754/LionKing.mp3",
-                    "http://192.168.1.7:8754/SmallWorld.mp3",
-                    "http://192.168.1.7:8754/Figment.mp3"
-                ]
+                AudioConfig = GetAudioConfig(audioConfigByKey, "MarcyWakeup", logger)
             }
         };
 
@@ -69,10 +64,21 @@ public class KidsWakeup
                     cfg.LinkedBedtime.TurnOff();
                     cfg.LinkedMediaPlayer.VolumeSet(0.5);
 
-                    var selectedAudioFiles = cfg.AudioFiles
-                        .OrderBy(_ => Random.Shared.Next())
-                        .Take(2)
+                    var selectedAudioFiles = new List<string>();
+                    if (!string.IsNullOrWhiteSpace(cfg.AudioConfig.FirstAudioFile))
+                    {
+                        selectedAudioFiles.Add(cfg.AudioConfig.FirstAudioFile);
+                    }
+
+                    var remainingAudioFiles = cfg.AudioConfig.AdditionalAudioFiles
+                        .Where(file => !string.Equals(file, cfg.AudioConfig.FirstAudioFile, StringComparison.OrdinalIgnoreCase))
                         .ToList();
+
+                    if (remainingAudioFiles.Count > 0)
+                    {
+                        var secondTrack = remainingAudioFiles[Random.Shared.Next(remainingAudioFiles.Count)];
+                        selectedAudioFiles.Add(secondTrack);
+                    }
 
                     if (selectedAudioFiles.Count == 0)
                     {
@@ -122,6 +128,57 @@ public class KidsWakeup
             });
         }
     }
+
+    private static Dictionary<string, KidsWakeupAudioConfig> LoadAudioConfig(ILogger<KidsWakeup> logger, IConfiguration configuration, IHostEnvironment environment)
+    {
+        var configuredPath = configuration.GetValue("KidsWakeup:AudioConfigPath", "kidswakeup.audio.json");
+        if (string.IsNullOrWhiteSpace(configuredPath))
+        {
+            logger.LogWarning("KidsWakeup audio config path is missing.");
+            return [];
+        }
+
+        var fullPath = Path.IsPathRooted(configuredPath)
+            ? configuredPath
+            : Path.Combine(environment.ContentRootPath, configuredPath);
+
+        if (!File.Exists(fullPath))
+        {
+            logger.LogWarning("KidsWakeup audio config file not found at {Path}", fullPath);
+            return [];
+        }
+
+        try
+        {
+            var json = File.ReadAllText(fullPath);
+            var audioConfig = JsonSerializer.Deserialize<Dictionary<string, KidsWakeupAudioConfig>>(json, new JsonSerializerOptions
+            {
+                PropertyNameCaseInsensitive = true
+            });
+
+            return audioConfig ?? [];
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Failed to load KidsWakeup audio config from {Path}", fullPath);
+            return [];
+        }
+    }
+
+    private static KidsWakeupAudioConfig GetAudioConfig(Dictionary<string, KidsWakeupAudioConfig> audioConfigByKey, string key, ILogger<KidsWakeup> logger)
+    {
+        if (audioConfigByKey.TryGetValue(key, out var audioConfig))
+        {
+            return audioConfig;
+        }
+
+        logger.LogWarning("KidsWakeup audio config is missing key {Key}", key);
+        return new KidsWakeupAudioConfig
+        {
+            FirstAudioFile = string.Empty,
+            AdditionalAudioFiles = []
+        };
+    }
 }
 
 public class KidsWakeupConfig
@@ -129,5 +186,11 @@ public class KidsWakeupConfig
     public InputBooleanEntity? Entity { get; set; }
     public MediaPlayerEntity? LinkedMediaPlayer { get; set; }
     public InputBooleanEntity? LinkedBedtime { get; set; }
-    public required List<string> AudioFiles { get; set; }
+    public required KidsWakeupAudioConfig AudioConfig { get; set; }
+}
+
+public class KidsWakeupAudioConfig
+{
+    public required string FirstAudioFile { get; set; }
+    public required List<string> AdditionalAudioFiles { get; set; }
 }
