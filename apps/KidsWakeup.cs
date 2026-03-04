@@ -14,16 +14,21 @@ public class KidsWakeup
     public KidsWakeup(ILogger<KidsWakeup> logger, IHaContext ha, Entities entities, Notify notify, IConfiguration configuration, IHostEnvironment environment)
     {
         var audioConfigByKey = LoadAudioConfig(logger, configuration, environment);
+        var playbackStatePath = ResolvePath(configuration.GetValue("KidsWakeup:PlaybackStatePath", "kidswakeup.state.json"), environment.ContentRootPath);
+        var secondaryTrackState = LoadPlaybackState(logger, playbackStatePath);
+        object stateLock = new();
 
         var config = new List<KidsWakeupConfig>
         {
             new() {
+                ConfigKey = "MorganWakeup",
                 Entity = entities.InputBoolean.MorganWakeup,
                 LinkedBedtime = entities.InputBoolean.MorganBed,
                 LinkedMediaPlayer = entities.MediaPlayer.MorgansRoomSpeaker,
                 AudioConfig = GetAudioConfig(audioConfigByKey, "MorganWakeup", logger)
             },
             new() {
+                ConfigKey = "MarcyWakeup",
                 Entity = entities.InputBoolean.MarcyWakeup,
                 LinkedBedtime = entities.InputBoolean.MarcyBed,
                 LinkedMediaPlayer = entities.MediaPlayer.MarcysRoomSpeaker,
@@ -70,13 +75,14 @@ public class KidsWakeup
                         selectedAudioFiles.Add(cfg.AudioConfig.FirstAudioFile);
                     }
 
-                    var remainingAudioFiles = cfg.AudioConfig.AdditionalAudioFiles
+                    var secondaryAudioFiles = cfg.AudioConfig.AdditionalAudioFiles
                         .Where(file => !string.Equals(file, cfg.AudioConfig.FirstAudioFile, StringComparison.OrdinalIgnoreCase))
+                        .Where(file => !string.IsNullOrWhiteSpace(file))
                         .ToList();
 
-                    if (remainingAudioFiles.Count > 0)
+                    var secondTrack = GetNextSecondaryTrack(cfg.ConfigKey, secondaryAudioFiles, secondaryTrackState, stateLock, playbackStatePath, logger);
+                    if (!string.IsNullOrWhiteSpace(secondTrack))
                     {
-                        var secondTrack = remainingAudioFiles[Random.Shared.Next(remainingAudioFiles.Count)];
                         selectedAudioFiles.Add(secondTrack);
                     }
 
@@ -156,8 +162,6 @@ public class KidsWakeup
                 PropertyNameCaseInsensitive = true
             });
 
-            logger.LogInformation("Loaded audio config: {AudioConfig}", audioConfig);
-
             return audioConfig ?? [];
         }
         catch (Exception ex)
@@ -181,10 +185,94 @@ public class KidsWakeup
             AdditionalAudioFiles = []
         };
     }
+
+    private static string ResolvePath(string? configuredPath, string contentRootPath)
+    {
+        var path = string.IsNullOrWhiteSpace(configuredPath) ? "kidswakeup.state.json" : configuredPath;
+        return Path.IsPathRooted(path)
+            ? path
+            : Path.Combine(contentRootPath, path);
+    }
+
+    private static Dictionary<string, string> LoadPlaybackState(ILogger<KidsWakeup> logger, string playbackStatePath)
+    {
+        if (!File.Exists(playbackStatePath))
+        {
+            return [];
+        }
+
+        try
+        {
+            var json = File.ReadAllText(playbackStatePath);
+            var playbackState = JsonSerializer.Deserialize<Dictionary<string, string>>(json, new JsonSerializerOptions
+            {
+                PropertyNameCaseInsensitive = true
+            });
+
+            return playbackState ?? [];
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Failed to load KidsWakeup playback state from {Path}", playbackStatePath);
+            return [];
+        }
+    }
+
+    private static string? GetNextSecondaryTrack(
+        string configKey,
+        List<string> secondaryAudioFiles,
+        Dictionary<string, string> secondaryTrackState,
+        object stateLock,
+        string playbackStatePath,
+        ILogger<KidsWakeup> logger)
+    {
+        if (secondaryAudioFiles.Count == 0)
+        {
+            return null;
+        }
+
+        lock (stateLock)
+        {
+            secondaryTrackState.TryGetValue(configKey, out var lastPlayedTrack);
+
+            var lastPlayedIndex = string.IsNullOrWhiteSpace(lastPlayedTrack)
+                ? -1
+                : secondaryAudioFiles.FindIndex(file => string.Equals(file, lastPlayedTrack, StringComparison.OrdinalIgnoreCase));
+
+            var nextIndex = lastPlayedIndex < 0
+                ? 0
+                : (lastPlayedIndex + 1) % secondaryAudioFiles.Count;
+
+            var nextTrack = secondaryAudioFiles[nextIndex];
+            secondaryTrackState[configKey] = nextTrack;
+
+            SavePlaybackState(secondaryTrackState, playbackStatePath, logger);
+
+            return nextTrack;
+        }
+    }
+
+    private static void SavePlaybackState(Dictionary<string, string> secondaryTrackState, string playbackStatePath, ILogger<KidsWakeup> logger)
+    {
+        try
+        {
+            var json = JsonSerializer.Serialize(secondaryTrackState, new JsonSerializerOptions
+            {
+                WriteIndented = true
+            });
+
+            File.WriteAllText(playbackStatePath, json);
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Failed to save KidsWakeup playback state to {Path}", playbackStatePath);
+        }
+    }
 }
 
 public class KidsWakeupConfig
 {
+    public required string ConfigKey { get; set; }
     public InputBooleanEntity? Entity { get; set; }
     public MediaPlayerEntity? LinkedMediaPlayer { get; set; }
     public InputBooleanEntity? LinkedBedtime { get; set; }
