@@ -11,36 +11,36 @@ public class Telegram(IServiceProvider serviceProvider, ILogger<Telegram> logger
 
     public void Alex(string message)
     {
-        SendMessage(message: message, target: [_settings.Alex]);
+        SendMessage(message: message, chatIds: [_settings.Alex]);
     }
 
     public void Julie(string message)
     {
-        SendMessage(message: message, target: [_settings.Julie]);
+        SendMessage(message: message, chatIds: [_settings.Julie]);
     }
 
     public void System(string message)
     {
-        SendMessage(message: message, target: [_settings.System]);
+        SendMessage(message: message, chatIds: [_settings.System]);
     }
 
     public void All(string message)
     {
-        SendMessage(message: message, target: [_settings.Julie, _settings.Alex]);
+        SendMessage(message: message, chatIds: [_settings.Julie, _settings.Alex]);
     }
 
-    private async void SendMessage(string message, IEnumerable<string> target)
+    private async void SendMessage(string message, IEnumerable<string> chatIds)
     {
         try
         {
             await using var scope = _serviceProvider.CreateAsyncScope();
             var haContext = scope.ServiceProvider.GetRequiredService<IHaContext>();
             var telegram = new Services(haContext).TelegramBot;
-            await telegram.SendMessageAsync(message: message, target: target);
+            await telegram.SendMessageAsync(message: message, additionalFields: new { chat_id = chatIds });
         }
         catch (Exception ex)
         {
-            logger.LogError(ex, "Failed to send Telegram message to {Target}", target);
+            logger.LogError(ex, "Failed to send Telegram message to {Target}", chatIds);
         }
     }
 }
