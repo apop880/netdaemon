@@ -31,7 +31,7 @@ public class Presence
                 services.Mqtt.Publish(new()
                 {
                     Topic = cfg.Topic,
-                    Payload = s.New?.State == homeSsid ? "home" : "not_home",
+                    Payload = s.New?.State == homeSsid ? "{\"in_zones\": [\"zone.home\"]}" : "{\"in_zones\": []}",
                     Retain = true
                 });
             });
