@@ -28,12 +28,10 @@ public class Presence
                 .StateChangesWithCurrent()
                 .Subscribe(s =>
             {
-                services.Mqtt.Publish(new()
-                {
-                    Topic = cfg.Topic,
-                    Payload = s.New?.State == homeSsid ? "{\"in_zones\": [\"zone.home\"]}" : "{\"in_zones\": []}",
-                    Retain = true
-                });
+                services.Mqtt.Publish(
+                    cfg.Topic,
+                    s.New?.State == homeSsid ? "{\"in_zones\": [\"zone.home\"]}" : "{\"in_zones\": []}",
+                    new { retain = true });
             });
         }
 
