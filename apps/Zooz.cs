@@ -98,12 +98,11 @@ public class Zooz
                                 cfg.Stopwatch.Stop(); // Stop the stopwatch
                                 var secondsHeld = cfg.Stopwatch.Elapsed.TotalSeconds; // Get precise elapsed time
 
-                                var rate = (cfg.Goal - cfg.Start) / cfg.Transition; // Brightness change rate per second
+                                var rate = (cfg.Goal - cfg.Start) / cfg.Transition;
                                 var estimatedBrightness = cfg.Start + rate * secondsHeld;
-                                // Clamp the brightness to valid range (1 to 255)
                                 estimatedBrightness = Math.Clamp(estimatedBrightness, 1, 255);
 
-                                cfg.LinkedEntity.TurnOn(brightness: (long)estimatedBrightness);
+                                cfg.LinkedEntity.TurnOn(brightnessPct: (long)Math.Round(estimatedBrightness / 255.0 * 100));
                             }
                             break;
                         case "KeyHeldDown":
@@ -113,10 +112,10 @@ public class Zooz
                                 cfg.Goal = e.Data.PropertyKey == "002" ? 255 : 1;
                                 if (cfg.Invert) cfg.Goal = 256 - cfg.Goal;
                                 cfg.Start = cfg.LinkedEntity.Attributes?.Brightness ?? 255;
-                                var transition = cfg.Delta * 5.0 / 255; // Scale transition time to 5 seconds for full range
-                                if (transition < 1) transition = 1; // Minimum transition time of 1s
+                                var transition = cfg.Delta * 5.0 / 255;
+                                if (transition < 1) transition = 1;
                                 cfg.Transition = (long)transition;
-                                cfg.LinkedEntity.TurnOn(brightness: (long)cfg.Goal, transition: cfg.Transition);
+                                cfg.LinkedEntity.TurnOn(brightnessPct: (long)(cfg.Goal / 255.0 * 100), transition: cfg.Transition);
                             }
                             break;
                     }
