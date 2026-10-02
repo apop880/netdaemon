@@ -61,6 +61,7 @@ public class OutsideLightsApp
                 }
             }
         };
+        _config.ControlGarageLights = false;
 
         lightOnPeriod =
             (AstroInstants.LocalSunsets - TimeSpan.FromMinutes(15))
@@ -90,21 +91,27 @@ public class OutsideLightsApp
 
         if (lightMode == "Standard")
         {
-            _entities.Light.Garage.TurnOn(brightnessPct: 80, colorTempKelvin: 2700);
+            if (_config.ControlGarageLights)
+            {
+                _entities.Light.Garage.TurnOn(brightnessPct: 80, colorTempKelvin: 2700);
+            }
         }
         else
         {
             _logger.LogInformation("We are in a holiday light mode: {lightMode}", lightMode);
 
-            _entities.Light.Garage1.TurnOn(
-                brightnessPct: 80,
-                rgbColor: holiday?.Hue?[colorPos % holiday.Hue.Count]);
-            _entities.Light.Garage2.TurnOn(
-                brightnessPct: 80,
-                rgbColor: holiday?.Hue?[colorPos++ % holiday.Hue.Count]);
-            _entities.Light.Garage3.TurnOn(
-                brightnessPct: 80,
-                rgbColor: holiday?.Hue?[colorPos++ % holiday.Hue.Count]);
+            if (_config.ControlGarageLights)
+            {
+                _entities.Light.Garage1.TurnOn(
+                    brightnessPct: 80,
+                    rgbColor: holiday?.Hue?[colorPos % holiday.Hue.Count]);
+                _entities.Light.Garage2.TurnOn(
+                    brightnessPct: 80,
+                    rgbColor: holiday?.Hue?[colorPos++ % holiday.Hue.Count]);
+                _entities.Light.Garage3.TurnOn(
+                    brightnessPct: 80,
+                    rgbColor: holiday?.Hue?[colorPos++ % holiday.Hue.Count]);
+            }
 
             if (holiday?.TurnOnSwitches == true)
             {
@@ -126,25 +133,28 @@ public class OutsideLightsApp
                 _logger.LogWarning("No matching WLED effects found for holiday {lightMode} (Wled='{WledName}'). Skipping WLED SelectOption calls.", lightMode, holiday?.Wled);
             }
 
-            _scheduler.Schedule(TimeSpan.FromSeconds(30), repeat =>
+            if (_config.ControlGarageLights)
             {
-                if (lightOnPeriod.IsNow())
+                _scheduler.Schedule(TimeSpan.FromSeconds(30), repeat =>
                 {
-                    _entities.Light.Garage1.TurnOn(
-                        brightnessPct: 80,
-                        rgbColor: holiday?.Hue?[colorPos++ % holiday.Hue.Count],
-                        transition: 7);
-                    _entities.Light.Garage2.TurnOn(
-                        brightnessPct: 80,
-                        rgbColor: holiday?.Hue?[colorPos++ % holiday.Hue.Count],
-                        transition: 7);
-                    _entities.Light.Garage3.TurnOn(
-                        brightnessPct: 80,
-                        rgbColor: holiday?.Hue?[colorPos++ % holiday.Hue.Count],
-                        transition: 7);
-                    repeat(TimeSpan.FromSeconds(30));
-                }
-            });
+                    if (lightOnPeriod.IsNow())
+                    {
+                        _entities.Light.Garage1.TurnOn(
+                            brightnessPct: 80,
+                            rgbColor: holiday?.Hue?[colorPos++ % holiday.Hue.Count],
+                            transition: 7);
+                        _entities.Light.Garage2.TurnOn(
+                            brightnessPct: 80,
+                            rgbColor: holiday?.Hue?[colorPos++ % holiday.Hue.Count],
+                            transition: 7);
+                        _entities.Light.Garage3.TurnOn(
+                            brightnessPct: 80,
+                            rgbColor: holiday?.Hue?[colorPos++ % holiday.Hue.Count],
+                            transition: 7);
+                        repeat(TimeSpan.FromSeconds(30));
+                    }
+                });
+            }
 
             // Only schedule WLED effect rotation if we have effects to rotate through
             if (filteredEffectList.Count > 0)
@@ -163,15 +173,24 @@ public class OutsideLightsApp
         var checkAttempts = 0;
         _scheduler.Schedule(TimeSpan.FromMinutes(10), repeat =>
         {
-            var garage1 = _entities.Light.Garage1;
-            var garage2 = _entities.Light.Garage2;
-            var garage3 = _entities.Light.Garage3;
             var deck = _entities.Light.WledDeck;
-            var garageOn = garage1.IsOn() && garage2.IsOn() && garage3.IsOn();
-            var garageBrightnessEqual = garage1.Attributes?.Brightness == garage2.Attributes?.Brightness && garage2.Attributes?.Brightness == garage3.Attributes?.Brightness;
             var deckOn = deck.IsOn();
+            bool lightsOnGood;
+            if (_config.ControlGarageLights)
+            {
+                var garage1 = _entities.Light.Garage1;
+                var garage2 = _entities.Light.Garage2;
+                var garage3 = _entities.Light.Garage3;
+                var garageOn = garage1.IsOn() && garage2.IsOn() && garage3.IsOn();
+                var garageBrightnessEqual = garage1.Attributes?.Brightness == garage2.Attributes?.Brightness && garage2.Attributes?.Brightness == garage3.Attributes?.Brightness;
+                lightsOnGood = garageOn && garageBrightnessEqual && deckOn;
+            }
+            else
+            {
+                lightsOnGood = deckOn;
+            }
 
-            if ((garageOn && garageBrightnessEqual && deckOn) || !lightOnPeriod.IsNow())
+            if (lightsOnGood || !lightOnPeriod.IsNow())
             {
                 _logger.LogInformation("Lights on check successful.");
             }
@@ -183,7 +202,10 @@ public class OutsideLightsApp
                     _logger.LogWarning("Light on check has failed 5 times.");
                     _notify.Alex("Light on check has failed 5 times. There may be an issue.");
                 }
-                _entities.Light.Garage.TurnOn(brightnessPct: 80, colorTempKelvin: 2700);
+                if (_config.ControlGarageLights)
+                {
+                    _entities.Light.Garage.TurnOn(brightnessPct: 80, colorTempKelvin: 2700);
+                }
                 _entities.Light.WledDeck.TurnOn();
                 repeat(TimeSpan.FromMinutes(10));
             }
@@ -195,20 +217,32 @@ public class OutsideLightsApp
         var checkAttempts = 0;
         _logger.LogInformation("Turning off outside lights.");
         _entities.Light.WledDeck.TurnOff();
-        _entities.Light.Garage.TurnOff();
+        if (_config.ControlGarageLights)
+        {
+            _entities.Light.Garage.TurnOff();
+        }
         _entities.Switch.OutdoorPlug1.TurnOff();
         _entities.Switch.OutdoorPlug2.TurnOff();
 
         _scheduler.Schedule(TimeSpan.FromMinutes(10), repeat =>
         {
-            var garage1 = _entities.Light.Garage1;
-            var garage2 = _entities.Light.Garage2;
-            var garage3 = _entities.Light.Garage3;
             var deck = _entities.Light.WledDeck;
-            var garageOff = garage1.IsOff() && garage2.IsOff() && garage3.IsOff();
             var deckOff = deck.IsOff();
+            bool lightsOffGood;
+            if (_config.ControlGarageLights)
+            {
+                var garage1 = _entities.Light.Garage1;
+                var garage2 = _entities.Light.Garage2;
+                var garage3 = _entities.Light.Garage3;
+                var garageOff = garage1.IsOff() && garage2.IsOff() && garage3.IsOff();
+                lightsOffGood = garageOff && deckOff;
+            }
+            else
+            {
+                lightsOffGood = deckOff;
+            }
 
-            if ((garageOff && /*porchOff &&*/ deckOff) || lightOnPeriod.IsNow())
+            if (lightsOffGood || lightOnPeriod.IsNow())
             {
                 _logger.LogInformation("Lights off check successful.");
             }
@@ -220,7 +254,10 @@ public class OutsideLightsApp
                     _logger.LogWarning("Light off check has failed 5 times.");
                     _notify.Alex("Light off check has failed 5 times. There may be an issue.");
                 }
-                _entities.Light.Garage.TurnOff();
+                if (_config.ControlGarageLights)
+                {
+                    _entities.Light.Garage.TurnOff();
+                }
                 _entities.Light.WledDeck.TurnOff();
                 repeat(TimeSpan.FromMinutes(10));
             }
@@ -231,6 +268,7 @@ public class OutsideLightsApp
 
 public class OutsideLightsConfig : Dictionary<string, HolidaySetting>
 {
+    public bool ControlGarageLights { get; set; }
 }
 
 /// <summary>
