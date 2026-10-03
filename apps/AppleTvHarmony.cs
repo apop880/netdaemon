@@ -26,7 +26,7 @@ public class AppleTvHarmony
                     if (currentActivity == "Watch Apple TV")
                     {
                         logger.LogInformation("Apple TV turned off while on Harmony Apple TV activity, powering off");
-                        harmonyActivities.SelectOption("Power Off");
+                        harmonyActivities.SelectOption("power_off");
                     }
                     else
                     {
