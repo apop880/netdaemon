@@ -5,7 +5,7 @@ namespace HomeAssistantApps;
 [NetDaemonApp]
 public class Presence
 {
-    public Presence(ILogger<Presence> logger, Entities entities, Services services, Notify notify, HomeMode homeMode, IConfiguration configuration)
+    public Presence(ILogger<Presence> logger, Entities entities, Services services, Notify notify, HomeMode homeMode, IConfiguration configuration, IHaContext haContext)
     {
         // Logic for tracking presence based on WiFi connection
         var homeSsid = configuration["HomeSSID"] ?? throw new InvalidOperationException("HomeSSID not found in configuration.");
@@ -28,10 +28,12 @@ public class Presence
                 .StateChangesWithCurrent()
                 .Subscribe(s =>
             {
-                services.Mqtt.Publish(
-                    cfg.Topic,
-                    s.New?.State == homeSsid ? "{\"in_zones\": [\"zone.home\"]}" : "{\"in_zones\": []}",
-                    new { retain = true });
+                haContext.CallService("mqtt", "publish", null, new
+                {
+                    topic = cfg.Topic,
+                    payload = s.New?.State == homeSsid ? "{\"in_zones\": [\"zone.home\"]}" : "{\"in_zones\": []}",
+                    retain = true
+                });
             });
         }
 
