@@ -10,16 +10,21 @@ public class HarmonyAutomation
     private const string ScreenDeviceName = "Elite Screens Home Appliance";
     private const string ScreenUpCommand = "DirectionUp";
     private const string ScreenDownCommand = "DirectionDown";
+    private const string ProjectorDeviceName = "Epson Projector";
+    private const string ProjectorPowerOffCommand = "PowerOff";
+    private const long ProjectorPowerOffRepeats = 2;
+    private const double ProjectorPowerOffRepeatDelaySecs = 2;
 
     private static readonly HashSet<string> ScreenUpActivities = ["Listen to Music"];
     private static readonly TimeSpan ScreenUpDebounce = TimeSpan.FromSeconds(3);
+    private static readonly TimeSpan ProjectorPowerOffDelay = TimeSpan.FromSeconds(15);
 
     private readonly ILogger<HarmonyAutomation> _logger;
     private readonly RemoteEntity _harmonyRemote;
     private readonly SelectEntity _harmonyActivities;
     private readonly MediaPlayerEntity _appleTv;
 
-    public HarmonyAutomation(ILogger<HarmonyAutomation> logger, Entities entities)
+    public HarmonyAutomation(ILogger<HarmonyAutomation> logger, IScheduler scheduler, Entities entities)
     {
         _logger = logger;
         _harmonyRemote = entities.Remote.HarmonyHub;
@@ -27,7 +32,7 @@ public class HarmonyAutomation
         _appleTv = entities.MediaPlayer.BasementBasement;
 
         WatchAppleTv();
-        WatchProjectorScreen();
+        WatchProjectorScreen(scheduler);
     }
 
     private void WatchAppleTv()
@@ -60,16 +65,21 @@ public class HarmonyAutomation
             });
     }
 
-    private void WatchProjectorScreen()
+    private void WatchProjectorScreen(IScheduler scheduler)
     {
         _harmonyActivities.StateChanges()
-            .Select(s => new ActivityChange(s.Old?.State, s.New?.State))
-            .Where(change => change.Previous is not null && change.Previous != change.Current)
-            .Select(change => change.Current == PowerOffActivity
-                ? Observable.Timer(ScreenUpDebounce).Select(_ => change)
-                : Observable.Return(change))
-            .Switch()
-            .Subscribe(change => OnActivityChanged(change.Previous!, change.Current!));
+            .Where(s => s.Old?.State is { } previous && previous != s.New?.State && s.New?.State != PowerOffActivity)
+            .Subscribe(s => OnActivityChanged(s.Old!.State!, s.New!.State!));
+
+        _harmonyActivities.StateChanges()
+            .Where(s => s.Old?.State is not null)
+            .WhenStateIsFor(s => s?.State == PowerOffActivity, ScreenUpDebounce, scheduler)
+            .Subscribe(s => OnActivityChanged(s.Old!.State!, s.New!.State!));
+
+        _harmonyActivities.StateChanges()
+            .Where(s => s.Old?.State is not null)
+            .WhenStateIsFor(s => s?.State == PowerOffActivity, ProjectorPowerOffDelay, scheduler)
+            .Subscribe(_ => SendProjectorPowerOff());
     }
 
     private void OnActivityChanged(string previous, string current)
@@ -97,6 +107,22 @@ public class HarmonyAutomation
         _logger.LogInformation("Activity changed from {Previous} to {Current}, projector screen already down", previous, current);
     }
 
+    private void SendProjectorPowerOff()
+    {
+        _logger.LogInformation(
+            "Sending {Command} to {Device} {Repeats} times after power_off",
+            ProjectorPowerOffCommand,
+            ProjectorDeviceName,
+            ProjectorPowerOffRepeats);
+        _harmonyRemote.SendCommand(new RemoteSendCommandParameters
+        {
+            Device = ProjectorDeviceName,
+            Command = ProjectorPowerOffCommand,
+            NumRepeats = ProjectorPowerOffRepeats,
+            DelaySecs = ProjectorPowerOffRepeatDelaySecs
+        });
+    }
+
     private void SendScreenCommand(string command)
     {
         _logger.LogInformation("Sending {Command} to {Device}", command, ScreenDeviceName);
@@ -106,6 +132,4 @@ public class HarmonyAutomation
             Command = command
         });
     }
-
-    private readonly record struct ActivityChange(string? Previous, string? Current);
 }
