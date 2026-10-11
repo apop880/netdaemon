@@ -16,6 +16,7 @@ curl -X POST \
   -H "Authorization: Bearer $HASS_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{"addon": "c6a2317c_netdaemon6"}' \
-  "$HASS_BASE_URL/api/services/hassio/addon_restart"
+  "$HASS_BASE_URL/api/services/hassio/addon_restart" \
+  > /dev/null
 
 echo "✅ Netdaemon add-on restarted."
