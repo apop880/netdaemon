@@ -1,8 +1,11 @@
 #!/bin/bash
 
 # Update the codegen
-echo "Updating NetDaemon.HassModel.CodeGen tool..."
+echo "Updating NetDaemon.HassModel.CodeGen tool (global)..."
 dotnet tool update -g NetDaemon.HassModel.CodeGen
+
+echo "Updating NetDaemon.HassModel.CodeGen tool (local manifest)..."
+dotnet tool update NetDaemon.HassModel.CodeGen
 
 # Find all .csproj files and update their package references
 find . -name "*.csproj" -print0 | while IFS= read -r -d $'\0' file; do

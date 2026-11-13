@@ -36,7 +36,7 @@ public class Telegram(IServiceProvider serviceProvider, ILogger<Telegram> logger
             await using var scope = _serviceProvider.CreateAsyncScope();
             var haContext = scope.ServiceProvider.GetRequiredService<IHaContext>();
             var telegram = new Services(haContext).TelegramBot;
-            await telegram.SendMessageAsync(message: message, additionalFields: new { chat_id = chatIds });
+            await telegram.SendMessageAsync(message: message, chatId: chatIds);
         }
         catch (Exception ex)
         {

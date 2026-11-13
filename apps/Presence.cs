@@ -5,7 +5,7 @@ namespace HomeAssistantApps;
 [NetDaemonApp]
 public class Presence
 {
-    public Presence(ILogger<Presence> logger, Entities entities, Services services, Notify notify, HomeMode homeMode, IConfiguration configuration, IHaContext haContext)
+    public Presence(ILogger<Presence> logger, Entities entities, Notify notify, HomeMode homeMode, IConfiguration configuration, IHaContext haContext)
     {
         // Logic for tracking presence based on WiFi connection
         var homeSsid = configuration["HomeSSID"] ?? throw new InvalidOperationException("HomeSSID not found in configuration.");

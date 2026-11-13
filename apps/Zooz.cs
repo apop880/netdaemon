@@ -102,7 +102,7 @@ public class Zooz
                                 var estimatedBrightness = cfg.Start + rate * secondsHeld;
                                 estimatedBrightness = Math.Clamp(estimatedBrightness, 1, 255);
 
-                                cfg.LinkedEntity.TurnOn(brightnessPct: (long)Math.Round(estimatedBrightness / 255.0 * 100));
+                                cfg.LinkedEntity.TurnOn(brightness: (long)estimatedBrightness);
                             }
                             break;
                         case "KeyHeldDown":
@@ -115,7 +115,7 @@ public class Zooz
                                 var transition = cfg.Delta * 5.0 / 255;
                                 if (transition < 1) transition = 1;
                                 cfg.Transition = (long)transition;
-                                cfg.LinkedEntity.TurnOn(brightnessPct: (long)(cfg.Goal / 255.0 * 100), transition: cfg.Transition);
+                                cfg.LinkedEntity.TurnOn(brightness: (long)cfg.Goal, transition: cfg.Transition);
                             }
                             break;
                     }
