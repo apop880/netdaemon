@@ -13,55 +13,25 @@ public class OutsideLightsApp
 {
     private readonly ILogger<OutsideLightsApp> _logger;
     private readonly Entities _entities;
-    private readonly OutsideLightsConfig _config;
+    private readonly HolidayCalendar _holidays;
     private readonly IScheduler _scheduler;
     private readonly Notify _notify;
     private readonly IPeriodTimeline lightOnPeriod;
+    private readonly bool _controlGarageLights = false;
 
 
-    public OutsideLightsApp(ILogger<OutsideLightsApp> logger, IScheduler scheduler, Entities entities, Notify notify)
+    public OutsideLightsApp(
+        ILogger<OutsideLightsApp> logger,
+        IScheduler scheduler,
+        Entities entities,
+        Notify notify,
+        HolidayCalendar holidays)
     {
         _logger = logger;
         _entities = entities;
         _scheduler = scheduler;
         _notify = notify;
-        _config = new OutsideLightsConfig
-        {
-            {
-                "Independence",
-                new HolidaySetting
-                {
-                    Hue = new List<List<int>> { new List<int> { 255, 0, 0 }, new List<int> { 0, 0, 255 } },
-                    Wled = "Independence",
-                    TurnOnSwitches = false,
-                    Period = TimeZoneInstants.StartOfMonths(7)
-                        .To(TimeZoneInstants.StartOfMonths(7) + TimeSpan.FromDays(6))
-                }
-            },
-            {
-                "Christmas",
-                new HolidaySetting
-                {
-                    Hue = new List<List<int>> { new List<int> { 0, 128, 0 }, new List<int> { 0, 0, 255 }, new List<int> { 255, 0, 0 } },
-                    Wled = "Christmas",
-                    TurnOnSwitches = true,
-                    Period = TimeZoneInstants.FromCron("0 0 0 ? 11 FRI#4")
-                        .To(TimeZoneInstants.FromCron("0 0 0 12 1 ?"))
-                }
-            },
-            {
-                "Halloween",
-                new HolidaySetting
-                {
-                    Hue = new List<List<int>> { new List<int> { 148, 0, 211 }, new List<int> { 255, 140, 0 }, new List<int> { 255, 0, 0 } },
-                    Wled = "Halloween",
-                    TurnOnSwitches = false,
-                    Period = (TimeZoneInstants.StartOfMonths(10) + TimeSpan.FromDays(21))
-                        .To(TimeZoneInstants.StartOfMonths(11) + TimeSpan.FromDays(2))
-                }
-            }
-        };
-        _config.ControlGarageLights = false;
+        _holidays = holidays;
 
         lightOnPeriod =
             (AstroInstants.LocalSunsets - TimeSpan.FromMinutes(15))
@@ -75,53 +45,44 @@ public class OutsideLightsApp
         int colorPos = 0;
         int wledEffectPos = 0;
         _logger.LogInformation("Turning on outside lights.");
-        string lightMode = "Standard";
-        HolidaySetting? holiday = null;
+        var holiday = _holidays.GetActiveHoliday();
         _entities.Light.WledDeck.TurnOn();
 
-        foreach (var h in _config)
+        if (holiday is null)
         {
-            if (h.Value.Period?.IsNow() ?? false)
-            {
-                lightMode = h.Key;
-                holiday = h.Value;
-                break;
-            }
-        }
-
-        if (lightMode == "Standard")
-        {
-            if (_config.ControlGarageLights)
+            if (_controlGarageLights)
             {
                 _entities.Light.Garage.TurnOn(brightnessPct: 80, colorTempKelvin: 2700);
             }
         }
         else
         {
-            _logger.LogInformation("We are in a holiday light mode: {lightMode}", lightMode);
+            _logger.LogInformation("We are in a holiday light mode: {lightMode}", holiday.Name);
 
-            if (_config.ControlGarageLights)
+            if (_controlGarageLights && holiday.HueColors is { Count: > 0 } hueColors)
             {
                 _entities.Light.Garage1.TurnOn(
                     brightnessPct: 80,
-                    rgbColor: holiday?.Hue?[colorPos % holiday.Hue.Count]);
+                    rgbColor: hueColors[colorPos % hueColors.Count]);
                 _entities.Light.Garage2.TurnOn(
                     brightnessPct: 80,
-                    rgbColor: holiday?.Hue?[colorPos++ % holiday.Hue.Count]);
+                    rgbColor: hueColors[colorPos++ % hueColors.Count]);
                 _entities.Light.Garage3.TurnOn(
                     brightnessPct: 80,
-                    rgbColor: holiday?.Hue?[colorPos++ % holiday.Hue.Count]);
+                    rgbColor: hueColors[colorPos++ % hueColors.Count]);
             }
 
-            if (holiday?.TurnOnSwitches == true)
+            if (holiday.TurnOnOutdoorSwitches)
             {
                 _entities.Switch.OutdoorPlug1.TurnOn();
                 _entities.Switch.OutdoorPlug2.TurnOn();
             }
 
-            IReadOnlyList<string> filteredEffectList = [.. _entities.Select.DeckPreset!.Attributes!.Options!
-                .Where(o => o.Contains(holiday?.Wled!))
-                .OrderBy(_ => Random.Shared.NextDouble())];
+            IReadOnlyList<string> filteredEffectList = holiday.WledPresetKeyword is { Length: > 0 } keyword
+                ? [.. _entities.Select.DeckPreset!.Attributes!.Options!
+                    .Where(o => o.Contains(keyword))
+                    .OrderBy(_ => Random.Shared.NextDouble())]
+                : [];
 
             // Guard against empty effect list to avoid divide-by-zero when using modulo with Count
             if (filteredEffectList.Count > 0)
@@ -130,10 +91,10 @@ public class OutsideLightsApp
             }
             else
             {
-                _logger.LogWarning("No matching WLED effects found for holiday {lightMode} (Wled='{WledName}'). Skipping WLED SelectOption calls.", lightMode, holiday?.Wled);
+                _logger.LogWarning("No matching WLED effects found for holiday {lightMode} (Wled='{WledName}'). Skipping WLED SelectOption calls.", holiday.Name, holiday.WledPresetKeyword);
             }
 
-            if (_config.ControlGarageLights)
+            if (_controlGarageLights && holiday.HueColors is { Count: > 0 } rotatingColors)
             {
                 _scheduler.Schedule(TimeSpan.FromSeconds(30), repeat =>
                 {
@@ -141,15 +102,15 @@ public class OutsideLightsApp
                     {
                         _entities.Light.Garage1.TurnOn(
                             brightnessPct: 80,
-                            rgbColor: holiday?.Hue?[colorPos++ % holiday.Hue.Count],
+                            rgbColor: rotatingColors[colorPos++ % rotatingColors.Count],
                             transition: 7);
                         _entities.Light.Garage2.TurnOn(
                             brightnessPct: 80,
-                            rgbColor: holiday?.Hue?[colorPos++ % holiday.Hue.Count],
+                            rgbColor: rotatingColors[colorPos++ % rotatingColors.Count],
                             transition: 7);
                         _entities.Light.Garage3.TurnOn(
                             brightnessPct: 80,
-                            rgbColor: holiday?.Hue?[colorPos++ % holiday.Hue.Count],
+                            rgbColor: rotatingColors[colorPos++ % rotatingColors.Count],
                             transition: 7);
                         repeat(TimeSpan.FromSeconds(30));
                     }
@@ -176,7 +137,7 @@ public class OutsideLightsApp
             var deck = _entities.Light.WledDeck;
             var deckOn = deck.IsOn();
             bool lightsOnGood;
-            if (_config.ControlGarageLights)
+            if (_controlGarageLights)
             {
                 var garage1 = _entities.Light.Garage1;
                 var garage2 = _entities.Light.Garage2;
@@ -202,7 +163,7 @@ public class OutsideLightsApp
                     _logger.LogWarning("Light on check has failed 5 times.");
                     _notify.Alex("Light on check has failed 5 times. There may be an issue.");
                 }
-                if (_config.ControlGarageLights)
+                if (_controlGarageLights)
                 {
                     _entities.Light.Garage.TurnOn(brightnessPct: 80, colorTempKelvin: 2700);
                 }
@@ -217,7 +178,7 @@ public class OutsideLightsApp
         var checkAttempts = 0;
         _logger.LogInformation("Turning off outside lights.");
         _entities.Light.WledDeck.TurnOff();
-        if (_config.ControlGarageLights)
+        if (_controlGarageLights)
         {
             _entities.Light.Garage.TurnOff();
         }
@@ -229,7 +190,7 @@ public class OutsideLightsApp
             var deck = _entities.Light.WledDeck;
             var deckOff = deck.IsOff();
             bool lightsOffGood;
-            if (_config.ControlGarageLights)
+            if (_controlGarageLights)
             {
                 var garage1 = _entities.Light.Garage1;
                 var garage2 = _entities.Light.Garage2;
@@ -254,7 +215,7 @@ public class OutsideLightsApp
                     _logger.LogWarning("Light off check has failed 5 times.");
                     _notify.Alex("Light off check has failed 5 times. There may be an issue.");
                 }
-                if (_config.ControlGarageLights)
+                if (_controlGarageLights)
                 {
                     _entities.Light.Garage.TurnOff();
                 }
@@ -263,38 +224,4 @@ public class OutsideLightsApp
             }
         });
     }
-}
-
-
-public class OutsideLightsConfig : Dictionary<string, HolidaySetting>
-{
-    public bool ControlGarageLights { get; set; }
-}
-
-/// <summary>
-/// Represents the lighting settings for a specific holiday.
-/// </summary>
-public class HolidaySetting
-{
-    /// <summary>
-    /// A list of RGB color values for Hue lights. Each inner list represents a color.
-    /// e.g., [[255, 0, 0], [0, 255, 0]] for red and green.
-    /// </summary>
-    public List<List<int>>? Hue { get; set; }
-
-    /// <summary>
-    /// The name of the WLED preset/effect to use.
-    /// </summary>
-    public string? Wled { get; set; }
-
-    /// <summary>
-    /// Optional flag to indicate if associated switches should be turned on.
-    /// Defaults to false if not present in the YAML.
-    /// </summary>
-    public bool TurnOnSwitches { get; set; }
-
-    /// <summary>
-    /// The time period during which the holiday settings are active.
-    /// </summary>
-    public IPeriodTimeline? Period { get; set; }
 }

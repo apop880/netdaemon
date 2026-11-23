@@ -15,6 +15,10 @@
     </ItemGroup>
 
     <ItemGroup>
+        <InternalsVisibleTo Include="netdaemon.Tests" />
+    </ItemGroup>
+
+    <ItemGroup>
         <None Update="$(MSBuildProjectDir)appsettings.Development.json">
             <CopyToOutputDirectory>Always</CopyToOutputDirectory>
             <CopyToPublishDirectory>Never</CopyToPublishDirectory>

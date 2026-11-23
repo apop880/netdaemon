@@ -31,7 +31,8 @@ try
                 .AddScoped<HomeMode>()
                 .AddSingleton<Server>()
                 .AddTransient<Unifi>()
-                .AddTransient<Proxmox>();
+                .AddTransient<Proxmox>()
+                .AddSingleton<HolidayCalendar>();
             services.AddHttpClient("IgnoreSslClient")
                 .ConfigurePrimaryHttpMessageHandler(() => new HttpClientHandler
                 {

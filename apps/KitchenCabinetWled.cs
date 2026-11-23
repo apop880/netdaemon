@@ -7,7 +7,7 @@ namespace HomeAssistantApps;
 [NetDaemonApp]
 public class KitchenCabinetWled
 {
-    private sealed record WledPreset(
+    internal sealed record WledPreset(
         string Name,
         int EffectId,
         int PaletteId,
@@ -23,17 +23,17 @@ public class KitchenCabinetWled
     private readonly ILogger<KitchenCabinetWled> _logger;
     private readonly IScheduler _scheduler;
     private readonly Entities _entities;
+    private readonly HolidayCalendar _holidays;
     private readonly string _wledIp;
     private readonly HttpClient _httpClient;
 
     private IDisposable? _effectCycleSubscription;
     private int _currentEffectIndex;
-
     // Verified against live WLED 0.15.3 (250 RGB LEDs, 1D strip):
     // Effects: 102=Candle Multi, 67=Colorwaves, 107=Noise Pal, 80=Twinklefox,
     //          115=Blends, 110=Flow, 101=Pacifica
     // Palettes: 0=Default, 4=* Color Gradient, 13=Sunset, 21=Sunset 2, 47=Orangery, 51=Atlantica
-    private static readonly WledPreset[] EveningPresets =
+    internal static readonly WledPreset[] EveningPresets =
     [
         // Warm amber & honey tea-light flicker — uses primary/secondary colors (col[0]/col[1]) with pal=0
         new("Amber Candlelight", EffectId: 102, PaletteId: 0, Speed: 75, Intensity: 175, Brightness: 175,
@@ -64,6 +64,43 @@ public class KitchenCabinetWled
         new("Moonlit Pacifica", EffectId: 101, PaletteId: 51, Speed: 42, Intensity: 120, Brightness: 155),
     ];
 
+    // Verified against live WLED 0.15.3 (250 RGB LEDs, 1D strip):
+    // Effects: 80=Twinklefox, 67=Colorwaves, 102=Candle Multi, 107=Noise Pal,
+    //          110=Flow, 115=Blends, 103=Solid Glitter, 74=Colortwinkles
+    // Palettes: 0=Default, 4=* Color Gradient, 5=* Colors Only, 10=Forest, 48=C9, 52=C9 2
+    internal static readonly WledPreset[] ChristmasPresets =
+    [
+        // Classic vintage C9 bulb twinkle (red, gold, green, blue) over a warm dim base
+        new("Vintage C9 Twinkle", EffectId: 80, PaletteId: 48, Speed: 42, Intensity: 150, Brightness: 185,
+            Option1: false),
+
+        // Soft red, evergreen & warm gold drifting waves
+        new("Holly & Gold Drift", EffectId: 67, PaletteId: 4, Speed: 30, Intensity: 105, Brightness: 185,
+            Colors: [[220, 18, 18], [16, 130, 32], [255, 190, 75]]),
+
+        // Warm crimson hearth candlelight flicker
+        new("Fireside Crimson Candle", EffectId: 102, PaletteId: 0, Speed: 70, Intensity: 175, Brightness: 175,
+            Colors: [[235, 36, 16], [52, 8, 2]]),
+
+        // Deep evergreen base with delicate warm-white fairy-light sparkle
+        new("Evergreen Fairy Lights", EffectId: 103, PaletteId: 0, Speed: 48, Intensity: 90, Brightness: 180,
+            Colors: [[12, 92, 26], [0, 0, 0], [255, 224, 155]]),
+
+        // Classic candy-cane peppermint stripes gently flowing
+        new("Peppermint Flow", EffectId: 110, PaletteId: 4, Speed: 28, Intensity: 85, Brightness: 180,
+            Colors: [[235, 16, 20], [255, 232, 210], [180, 12, 18]]),
+
+        // Gentle multi-color C9 holiday shimmer with warm amber accents
+        new("C9 Holiday Shimmer", EffectId: 74, PaletteId: 52, Speed: 48, Intensity: 135, Brightness: 185),
+
+        // Slow organic Perlin waves across deep pine and emerald forest tones
+        new("Winter Pine Glow", EffectId: 107, PaletteId: 10, Speed: 32, Intensity: 96, Brightness: 170),
+
+        // Ultra-slow velvety blend through cranberry red, warm champagne gold, and pine green
+        new("Velvet Noel", EffectId: 115, PaletteId: 5, Speed: 24, Intensity: 78, Brightness: 180,
+            Colors: [[210, 18, 28], [255, 198, 95], [14, 118, 34]]),
+    ];
+
     private const int EveningStartHour = 17;
     private const int NightModeStartHour = 23;
     private const int NightModeBrightness = 38;
@@ -74,11 +111,13 @@ public class KitchenCabinetWled
         IScheduler scheduler,
         Entities entities,
         IHttpClientFactory httpClientFactory,
-        IConfiguration configuration)
+        IConfiguration configuration,
+        HolidayCalendar holidays)
     {
         _logger = logger;
         _scheduler = scheduler;
         _entities = entities;
+        _holidays = holidays;
         _wledIp = configuration.GetValue<string>("Wled:KitchenCabinetsIp") ?? "192.168.1.94";
         _httpClient = httpClientFactory.CreateClient();
         _logger.LogInformation("KitchenCabinetWled: Initializing with WLED IP {Ip}", _wledIp);
@@ -86,6 +125,7 @@ public class KitchenCabinetWled
         ScheduleEveningStart();
         ScheduleNightModeStart();
         SubscribeToNightModeChanges();
+        SubscribeToHolidayChanges();
 
         if (IsCurrentlyEvening() && _entities.InputBoolean.NightMode.IsOff())
         {
@@ -153,12 +193,44 @@ public class KitchenCabinetWled
             });
     }
 
+    private void SubscribeToHolidayChanges()
+    {
+        _holidays.Subscribe(
+            Holiday.Christmas,
+            onStart: () =>
+            {
+                _logger.LogInformation("KitchenCabinetWled: Christmas season started");
+                if (IsCurrentlyEvening() && _entities.InputBoolean.NightMode.IsOff())
+                {
+                    StartEveningMode();
+                }
+            },
+            onEnd: () =>
+            {
+                _logger.LogInformation("KitchenCabinetWled: Christmas season ended");
+                if (IsCurrentlyEvening() && _entities.InputBoolean.NightMode.IsOff())
+                {
+                    StartEveningMode();
+                }
+            },
+            _scheduler);
+    }
+
+    internal WledPreset[] GetActiveEveningPresets() =>
+        SelectEveningPresets(_holidays, _scheduler.Now.UtcDateTime);
+
+    internal static WledPreset[] SelectEveningPresets(HolidayCalendar holidays, DateTime utcInstant) =>
+        holidays.IsActive(Holiday.Christmas, utcInstant)
+            ? ChristmasPresets
+            : EveningPresets;
+
     private void StartEveningMode()
     {
         _effectCycleSubscription?.Dispose();
         _effectCycleSubscription = null;
 
-        _currentEffectIndex = Random.Shared.Next(EveningPresets.Length);
+        var initialPresets = GetActiveEveningPresets();
+        _currentEffectIndex = Random.Shared.Next(initialPresets.Length);
         ApplyEveningEffect();
 
         _effectCycleSubscription = _scheduler.Schedule(
@@ -171,20 +243,30 @@ public class KitchenCabinetWled
                     return;
                 }
 
-                _currentEffectIndex = (_currentEffectIndex + 1) % EveningPresets.Length;
+                var activePresets = GetActiveEveningPresets();
+                _currentEffectIndex = (_currentEffectIndex + 1) % activePresets.Length;
                 ApplyEveningEffect();
                 repeat(TimeSpan.FromMinutes(EffectCycleIntervalMinutes));
             });
 
-        _logger.LogInformation("KitchenCabinetWled: Evening mode started with effect cycling every {Min} minutes", EffectCycleIntervalMinutes);
+        var modeLabel = _holidays.IsActive(Holiday.Christmas, _scheduler.Now.UtcDateTime) ? "Christmas" : "Standard";
+        _logger.LogInformation("KitchenCabinetWled: Evening mode ({Mode}) started with effect cycling every {Min} minutes",
+            modeLabel, EffectCycleIntervalMinutes);
     }
 
     private void ApplyEveningEffect()
     {
-        var preset = EveningPresets[_currentEffectIndex];
-        _logger.LogInformation("KitchenCabinetWled: Applying evening preset: {Name} (fx={Fx}, pal={Pal})",
-            preset.Name, preset.EffectId, preset.PaletteId);
+        var presets = GetActiveEveningPresets();
+        var preset = presets[_currentEffectIndex % presets.Length];
+        var isChristmas = ReferenceEquals(presets, ChristmasPresets);
+        _logger.LogInformation("KitchenCabinetWled: Applying {Season} preset: {Name} (fx={Fx}, pal={Pal})",
+            isChristmas ? "Christmas" : "evening", preset.Name, preset.EffectId, preset.PaletteId);
 
+        SendWledState(BuildPresetState(preset));
+    }
+
+    internal static JsonObject BuildPresetState(WledPreset preset)
+    {
         var seg = new JsonObject
         {
             ["id"] = 0,
@@ -210,15 +292,13 @@ public class KitchenCabinetWled
             seg["col"] = col;
         }
 
-        var state = new JsonObject
+        return new JsonObject
         {
             ["on"] = true,
             ["bri"] = preset.Brightness,
             ["transition"] = TransitionDuration,
             ["seg"] = new JsonArray { seg }
         };
-
-        SendWledState(state);
     }
 
     private void StartNightMode()
