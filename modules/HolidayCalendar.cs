@@ -38,7 +38,7 @@ public class HolidayCalendar
     {
     }
 
-    public HolidayCalendar(IEnumerable<HolidayDefinition> holidays)
+    internal HolidayCalendar(IEnumerable<HolidayDefinition> holidays)
     {
         _holidays = holidays.ToList();
     }

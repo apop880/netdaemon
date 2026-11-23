@@ -1,4 +1,5 @@
 using HomeAssistantApps;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace netdaemon.Tests;
 
@@ -81,5 +82,18 @@ public class HolidayCalendarTests
                 }
             }
         }
+    }
+
+    [Fact]
+    public void DependencyInjection_ResolvesDefaultHolidays()
+    {
+        using var provider = new ServiceCollection()
+            .AddSingleton<HolidayCalendar>()
+            .BuildServiceProvider();
+
+        var calendar = provider.GetRequiredService<HolidayCalendar>();
+
+        Assert.NotNull(calendar.Get(Holiday.Christmas));
+        Assert.Equal(3, calendar.Holidays.Count);
     }
 }
