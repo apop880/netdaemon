@@ -9,8 +9,13 @@ dotnet publish -c Release -o /mnt/hass_config/netdaemon6
 # Restart the add-on
 echo "🔄 Restarting Netdaemon add-on..."
 APPSETTINGS_FILE="appsettings.json"
+PROD_SECRETS_FILE="/mnt/hass_config/netdaemon6/appsettings.Production.json"
+if [ ! -f "$PROD_SECRETS_FILE" ]; then
+  echo "❌ Missing $PROD_SECRETS_FILE" >&2
+  exit 1
+fi
 HASS_BASE_URL=$(jq -r '.HomeAssistant.Ssl' "$APPSETTINGS_FILE" | grep -qi true && echo "https://$(jq -r '.HomeAssistant.Host' "$APPSETTINGS_FILE"):$(jq -r '.HomeAssistant.Port' "$APPSETTINGS_FILE")" || echo "http://$(jq -r '.HomeAssistant.Host' "$APPSETTINGS_FILE"):$(jq -r '.HomeAssistant.Port' "$APPSETTINGS_FILE")")
-HASS_TOKEN=$(jq -r '.HomeAssistant.Token' "$APPSETTINGS_FILE")
+HASS_TOKEN=$(jq -r '.HomeAssistant.Token' "$PROD_SECRETS_FILE")
 
 curl -X POST \
   -H "Authorization: Bearer $HASS_TOKEN" \

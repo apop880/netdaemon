@@ -1,4 +1,4 @@
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
 
     <PropertyGroup>
         <OutputType>Exe</OutputType>
@@ -6,7 +6,8 @@
         <LangVersion>14.0</LangVersion>
         <Nullable>enable</Nullable>
         <RootNamespace>netdaemon</RootNamespace>
-    </PropertyGroup>
+      <UserSecretsId>9407f6e1-9adf-4528-b137-c7efd2f96803</UserSecretsId>
+  </PropertyGroup>
     
     <ItemGroup>
         <Compile Remove="tests/**" />

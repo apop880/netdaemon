@@ -20,6 +20,8 @@ public class UnifiLiveTests(Xunit.Abstractions.ITestOutputHelper output)
     {
         var configuration = new ConfigurationBuilder()
             .AddJsonFile(Path.Combine(FindRepoRoot(), "appsettings.json"), optional: false)
+            .AddUserSecrets(typeof(Unifi).Assembly, optional: true)
+            .AddEnvironmentVariables()
             .Build();
 
         var testDns = Environment.GetEnvironmentVariable("UNIFI_TEST_DNS") ?? "1.1.1.1";
