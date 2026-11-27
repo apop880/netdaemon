@@ -1,0 +1,15 @@
+obj
+bin
+appsettings.Development.json
+.vs
+*.gen
+.idea
+HomeAssistantGenerated.cs
+TelegramGlobals.cs
+NetDaemonCodegen
+publish
+.*
+!.gitignore
+*.yaml
+kidswakeup.audio.json
+kidswakeup.state.json
