@@ -13,3 +13,5 @@ publish
 *.yaml
 kidswakeup.audio.json
 kidswakeup.state.json
+tools/deploy-ui/ui/node_modules/
+tools/deploy-ui/__pycache__/
