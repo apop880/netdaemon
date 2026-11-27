@@ -53,13 +53,13 @@ public class HolidayCalendarTests
     }
 
     [Fact]
-    public void KitchenCabinetWled_AllPresetsBuildValidWledStatePayloads()
+    public void KitchenCabinetWled_AllPresetsBuildValidWledStatePayloadsAtFullBrightness()
     {
         foreach (var preset in KitchenCabinetWled.EveningPresets.Concat(KitchenCabinetWled.ChristmasPresets))
         {
             var payload = KitchenCabinetWled.BuildPresetState(preset);
             Assert.True(payload["on"]!.GetValue<bool>());
-            Assert.InRange(payload["bri"]!.GetValue<int>(), 1, 255);
+            Assert.Equal(KitchenCabinetWled.FullBrightness, payload["bri"]!.GetValue<int>());
 
             var seg = payload["seg"]![0]!.AsObject();
             Assert.Equal(preset.EffectId, seg["fx"]!.GetValue<int>());
@@ -82,6 +82,42 @@ public class HolidayCalendarTests
                 }
             }
         }
+    }
+
+    [Theory]
+    [InlineData(true, false, false, 12, KitchenCabinetWled.LightMode.Off)]
+    [InlineData(true, false, true, 9, KitchenCabinetWled.LightMode.Off)]
+    [InlineData(false, true, false, 19, KitchenCabinetWled.LightMode.Evening)]
+    [InlineData(false, true, true, 21, KitchenCabinetWled.LightMode.Night)]
+    [InlineData(false, false, false, 23, KitchenCabinetWled.LightMode.Night)]
+    [InlineData(false, false, true, 2, KitchenCabinetWled.LightMode.Night)]
+    [InlineData(false, false, false, 6, KitchenCabinetWled.LightMode.Off)]
+    public void KitchenCabinetWled_DetermineStartupMode_RespectsDaylightAndNightMode(
+        bool isDaylight,
+        bool isEvening,
+        bool isNightModeOn,
+        int localHour,
+        KitchenCabinetWled.LightMode expected)
+    {
+        var actual = KitchenCabinetWled.DetermineStartupMode(isDaylight, isEvening, isNightModeOn, localHour);
+        Assert.Equal(expected, actual);
+    }
+
+    [Theory]
+    [InlineData(true, false, true, KitchenCabinetWled.LightMode.Off)]
+    [InlineData(true, false, false, KitchenCabinetWled.LightMode.Off)]
+    [InlineData(false, true, true, KitchenCabinetWled.LightMode.Night)]
+    [InlineData(false, true, false, KitchenCabinetWled.LightMode.Evening)]
+    [InlineData(false, false, true, KitchenCabinetWled.LightMode.Night)]
+    [InlineData(false, false, false, KitchenCabinetWled.LightMode.Off)]
+    public void KitchenCabinetWled_DetermineModeForNightModeChange_RespectsDaylight(
+        bool isDaylight,
+        bool isEvening,
+        bool isNightModeOn,
+        KitchenCabinetWled.LightMode expected)
+    {
+        var actual = KitchenCabinetWled.DetermineModeForNightModeChange(isDaylight, isEvening, isNightModeOn);
+        Assert.Equal(expected, actual);
     }
 
     [Fact]
